@@ -50,7 +50,6 @@ config :esbuild,
  # configure for  Oban
 config :student_live, Oban,
   repo: StudentLive.Repo,
-  plugins: [Oban.Plugins.Pruner],
   queues: [default: 10, enrollments: 5]
 
 # Configure tailwind (the version is required)

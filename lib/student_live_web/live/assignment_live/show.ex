@@ -208,7 +208,7 @@ defmodule StudentLiveWeb.AssignmentLive.Show do
           <%= if @remaining_attempts > 0 do %>
             <form phx-submit="save_submission" phx-change="validate" class="space-y-4">
               <div
-                class="border-2 border-dashed border-gray-300 text-blue-700 rounded-lg p-6 text-center"
+                class="border-2 cursor-pointer border-dashed border-gray-300 text-blue-700 rounded-lg p-6 text-center"
                 phx-drop-target={@uploads.assignment_file.ref}
               >
                 <.live_file_input upload={@uploads.assignment_file} class="mb-2" />

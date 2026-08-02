@@ -35,7 +35,7 @@ courses_data = [
     start_date: Date.add(today, 14),
     end_date: Date.add(today, 20),
     maximum_capacity: 30,
-    current_enrollment_count: 0
+
 
   },
   %{
@@ -45,7 +45,7 @@ courses_data = [
     start_date: Date.add(today, 7),
     end_date: Date.add(today, 15),
     maximum_capacity: 2,
-    current_enrollment_count: 0
+
 
   },
   %{
@@ -55,7 +55,7 @@ courses_data = [
     start_date: Date.add(today, -10),
     end_date: Date.add(today, 30),
     maximum_capacity: 25,
-    current_enrollment_count: 0
+
 
   },
 
@@ -66,7 +66,7 @@ courses_data = [
     start_date: Date.add(today, -1),
     end_date: Date.add(today, 40),
     maximum_capacity: 12,
-    current_enrollment_count: 0
+
 
   }
 ]

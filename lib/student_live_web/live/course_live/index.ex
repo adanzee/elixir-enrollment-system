@@ -2,11 +2,11 @@ defmodule StudentLiveWeb.CourseLive.Index do
   use StudentLiveWeb, :live_view
   alias StudentLive.Courses
 
-  @impl true
+ @impl true
   def mount(_params, _session, socket) do
-    courses = Courses.list_courses()
-    {:ok, assign(socket, courses: courses)}
+      courses = Courses.list_courses_with_capacity()
 
+    {:ok, assign(socket, courses: courses)}
   end
 
   @impl true
@@ -17,8 +17,9 @@ defmodule StudentLiveWeb.CourseLive.Index do
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <%= for course <- @courses do %>
-          <% status = Courses.get_course_status(course) %>
-          <% remaining = course.maximum_capacity - course.current_enrollment_count %>
+        <% count = Courses.active_enrollment_count(course.id) %>
+          <% status = Courses.get_course_status(course, count) %>
+          <% remaining = max(0, course.maximum_capacity - count) %>
           <div class="border rounded-lg p-6 bg-white shadow-sm flex flex-col justify-between">
             <div>
               <div class="flex justify-between items-center mb-2">
@@ -29,7 +30,7 @@ defmodule StudentLiveWeb.CourseLive.Index do
 
               <div class="text-sm text-gray-500 space-y-1 mb-4">
                 <p><strong>Schedule:</strong> <%= course.start_date %> to <%= course.end_date %></p>
-                <p><strong>Capacity:</strong> <%= course.current_enrollment_count %> / <%= course.maximum_capacity %></p>
+                <p><strong>Capacity:</strong> <%= course.active_enrollment_count %> / <%= course.maximum_capacity %></p>
                 <p><strong>Remaining Seats:</strong> <%= remaining %></p>
               </div>
             </div>

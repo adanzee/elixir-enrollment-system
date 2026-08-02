@@ -53,16 +53,24 @@ defmodule StudentLive.Workers.ProcessWaitlistWorker do
     case next_waitlisted do
       %Enrollment{} = enrollment ->
 
-        enrollment
-        |> Enrollment.changeset(%{status: :active})
-        |> Repo.update!()
+        updated_enrollment =
+          enrollment
+          |> Enrollment.changeset(%{status: :active})
+          |> Repo.update!()
+          IO.inspect(
+          {:sending_pubsub, course.id, updated_enrollment.student_id},
+          label: "PUBSUB")
 
-
-
+          Phoenix.PubSub.broadcast(
+          StudentLive.PubSub,
+          "course:#{course.id}",
+          {:student_promoted, updated_enrollment.student_id})
+        IO.inspect(
+        {:broadcasting_promotion, updated_enrollment.student_id},label: "PUBSUB work")
         :promoted
 
-      nil ->
-        :no_waitlisted_students
-    end
+          nil ->
+            :no_waitlisted_students
+        end
   end
 end

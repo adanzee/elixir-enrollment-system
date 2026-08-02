@@ -9,7 +9,7 @@ defmodule StudentLive.Repo.Migrations.CreateCourses do
       add :start_date, :date, null: false
       add :end_date, :date, null: false
       add :maximum_capacity, :integer, null: false, default: 0
-      add :current_enrollment_count, :integer, null: false, default: 0
+
 
 
       timestamps()

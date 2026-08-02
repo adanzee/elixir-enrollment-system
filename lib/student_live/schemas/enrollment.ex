@@ -15,6 +15,8 @@ defmodule StudentLive.Schemas.Enrollment do
     enrollment
     |> cast(attrs, [:student_id, :course_id, :status])
     |> validate_required([:student_id, :course_id, :status])
-    |> unique_constraint([:student_id, :course_id], name: :enrollments_student_id_course_id_index, message: "Student is already enrolled in this course")
+    |> unique_constraint([:student_id, :course_id])
+    |> foreign_key_constraint(:student_id)
+    |> foreign_key_constraint(:course_id)
   end
 end
