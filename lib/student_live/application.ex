@@ -12,6 +12,8 @@ defmodule StudentLive.Application do
       StudentLive.Repo,
       {DNSCluster, query: Application.get_env(:student_live, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: StudentLive.PubSub},
+      {Oban, Application.fetch_env!(:student_live, Oban)},
+      {Finch, name: StudentLive.Finch},
       # Start a worker by calling: StudentLive.Worker.start_link(arg)
       # {StudentLive.Worker, arg},
       # Start to serve requests, typically the last entry

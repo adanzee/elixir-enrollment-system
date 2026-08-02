@@ -65,6 +65,7 @@ defmodule StudentLive.MixProject do
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
+      {:oban, "~> 2.17"},
       {:bandit, "~> 1.5"}
     ]
   end

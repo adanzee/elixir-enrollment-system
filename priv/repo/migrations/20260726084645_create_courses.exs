@@ -11,6 +11,7 @@ defmodule StudentLive.Repo.Migrations.CreateCourses do
       add :maximum_capacity, :integer, null: false, default: 0
       add :current_enrollment_count, :integer, null: false, default: 0
 
+
       timestamps()
     end
 

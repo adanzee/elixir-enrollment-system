@@ -36,6 +36,7 @@ courses_data = [
     end_date: Date.add(today, 20),
     maximum_capacity: 30,
     current_enrollment_count: 0
+
   },
   %{
     title: "CS201: Advanced Elixir and Ecto",
@@ -45,6 +46,7 @@ courses_data = [
     end_date: Date.add(today, 15),
     maximum_capacity: 2,
     current_enrollment_count: 0
+
   },
   %{
     title: "CS301: Functional System Architecture",
@@ -54,6 +56,18 @@ courses_data = [
     end_date: Date.add(today, 30),
     maximum_capacity: 25,
     current_enrollment_count: 0
+
+  },
+
+  %{
+    title: "CS401: Functional System Architecture",
+    description: "Programming fundamentals.",
+    outline_pdf_path: "/uploads/programming_outline.pdf",
+    start_date: Date.add(today, -1),
+    end_date: Date.add(today, 40),
+    maximum_capacity: 12,
+    current_enrollment_count: 0
+
   }
 ]
 
@@ -65,7 +79,7 @@ courses =
   end)
 
 # 4. Seed Assignments
-[cs101, cs201, cs301] = courses
+[cs101, cs201, cs301, cs401] = courses
 
 assignments_data = [
   #Assignments
@@ -96,7 +110,13 @@ assignments_data = [
     description: "Submit your architectural design document for a distributed Erlang cluster.",
     maximum_submissions_per_student: 2,
     course_id: cs301.id
-  }
+  },
+  %{
+    title: "Assignment 1: File Uploads & Progress",
+    description: "Implement LiveView upload with entry consuming and local storage integration.",
+    maximum_submissions_per_student: 3,
+    course_id: cs401.id
+  },
 ]
 
 Enum.each(assignments_data, fn attrs ->

@@ -40,7 +40,7 @@ defmodule StudentLiveWeb.CourseLive.Access do
          |> Plug.Conn.put_session(:student_id, student.id)
          |> Plug.Conn.put_session(:student_email, student.email)
          |> put_flash(:info, "Welcome back, #{student.name}!")
-         |> push_navigate(to: ~p"/courses/#{course.id}/outline")}
+         |> push_navigate(to: ~p"/courses/#{course.id}")}
 
       {:error, reason} ->
         {:noreply, put_flash(socket, :error, reason)}

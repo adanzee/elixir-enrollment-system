@@ -16,83 +16,176 @@ defmodule StudentLive.Courses do
     |> Repo.preload(:assignments)
   end
 
- def get_course_status(%Course{} = course, today \\ Date.utc_today()) do
-    cond do
-      Date.compare(today, course.start_date) != :lt -> "Started"
-      course.current_enrollment_count >= course.maximum_capacity -> "Full"
-      true -> "Open"
-    end
-  end
-
- def enrolled?(student_id, course_id) when is_integer(student_id) and is_integer(course_id) do
-    Repo.exists?(
-      from e in Enrollment,
-        where: e.student_id == ^student_id and e.course_id == ^course_id
-    )
-  end
 
   def enrolled?(%StudentLive.Schemas.Student{id: student_id}, course_id) do
     enrolled?(student_id, course_id)
   end
 
+
+  def enrolled?(student_id, course_id) when is_integer(student_id) and is_integer(course_id) do
+    from(e in Enrollment, where: e.student_id == ^student_id and e.course_id == ^course_id and e.status == :active)
+    |> Repo.exists?()
+  end
+
   def enrolled?(_student, _course_id), do: false
 
-  def enroll_student(student_id, course_id, today \\ Date.utc_today()) do
-    course = Repo.get!(Course, course_id)
-    status = get_course_status(course, today)
 
-    cond do
-      status != "Open" ->
-        {:error, "Cannot enroll. Course status is currently #{status}."}
 
-      enrolled?(student_id, course_id) ->
-        {:error, "Student is already enrolled in this course."}
+  def enroll_student(student_id, course_id) do
+    Repo.transaction(fn ->
+      course =
+        Course
+        |> where(id: ^course_id)
+        |> lock("FOR UPDATE")
+        |> Repo.one!()
 
-      true ->
-        Repo.transaction(fn ->
-          changeset = Enrollment.changeset(%Enrollment{}, %{student_id: student_id, course_id: course_id})
+      active_count =
+        Repo.aggregate(
+          from(e in Enrollment, where: e.course_id == ^course_id and e.status == :active),
+          :count
+        )
 
-          case Repo.insert(changeset) do
-            {:ok, enrollment} ->
-              from(c in Course, where: c.id == ^course_id)
-              |> Repo.update_all(inc: [current_enrollment_count: 1])
+      status = if active_count < course.maximum_capacity, do: :active, else: :waitlisted
 
-              enrollment
+      %Enrollment{}
+      |> Enrollment.changeset(%{student_id: student_id, course_id: course_id, status: status})
+      |> Repo.insert!()
+    end)
+  end
 
-            {:error, cs} ->
-              Repo.rollback(cs)
+ def register_and_enroll(attrs, course_id) do
+  Repo.transaction(fn ->
+
+    course =
+      Course
+      |> where(id: ^course_id)
+      |> lock("FOR UPDATE")
+      |> Repo.one!()
+
+    student =
+      case Repo.get_by(Student, email: attrs["email"]) do
+        nil ->
+          %Student{}
+          |> Student.changeset(attrs)
+          |> Repo.insert!()
+
+        student ->
+          student
+      end
+
+    existing_enrollment =
+      Repo.get_by(
+        Enrollment,
+        student_id: student.id,
+        course_id: course_id
+      )
+
+    case existing_enrollment do
+      %Enrollment{} ->
+        Repo.rollback(:already_enrolled)
+
+      nil ->
+        active_count =
+          Repo.aggregate(
+            from(e in Enrollment,
+              where:
+                e.course_id == ^course_id and
+                e.status == :active
+            ),
+            :count
+          )
+
+        status =
+          if active_count < course.maximum_capacity do
+            :active
+          else
+            :waitlisted
           end
-        end)
+
+        enrollment =
+          %Enrollment{}
+          |> Enrollment.changeset(%{
+            student_id: student.id,
+            course_id: course_id,
+            status: status
+          })
+          |> Repo.insert!()
+
+
+
+        {student, enrollment}
     end
+  end)
   end
 
-  # Explicitly find and delete the exact enrollment record
-  def deregister_student(student_id, course_id, today \\ Date.utc_today()) do
-    course = Repo.get!(Course, course_id)
 
-    cond do
-      Date.compare(today, course.start_date) != :lt ->
-        {:error, "Cannot deregister from a course that has already started."}
+  def deregister_student(student_id, course_id) do
+  enrollment = Repo.get_by(Enrollment, student_id: student_id, course_id: course_id)
 
-      true ->
-        case Repo.get_by(Enrollment, student_id: student_id, course_id: course_id) do
-          nil ->
-            {:error, "Student is not enrolled in this course."}
+  case enrollment do
+    nil ->
+      {:error, :not_found}
 
-          %Enrollment{} = enrollment ->
-            Repo.transaction(fn ->
-              Repo.delete!(enrollment)
+    %Enrollment{status: status} when status in [:waitlisted, "waitlisted"] ->
+      Repo.delete(enrollment)
 
+    %Enrollment{status: status} when status in [:active, "active"] ->
+      changeset = StudentLive.Workers.ProcessWaitlistWorker.new(%{"course_id" => course_id})
 
-              from(c in Course, where: c.id == ^course_id and c.current_enrollment_count > 0)
-              |> Repo.update_all(inc: [current_enrollment_count: -1])
-            end)
-            |> case do
-              {:ok, _} -> {:ok, :deregistered}
-              {:error, reason} -> {:error, reason}
-            end
-        end
-    end
+      Ecto.Multi.new()
+      |> Ecto.Multi.delete(:delete_enrollment, enrollment)
+
+      |> Oban.insert(:enqueue_waitlist_worker, changeset)
+      |> Repo.transaction()
+
+    other ->
+      {:error, {:unexpected_state, other}}
   end
+  end
+
+  def get_assignment(id) do
+    Repo.get(Assignment, id)
+  end
+
+  def get_course_with_enrollments!(id) do
+  Course
+  |> Repo.get!(id)
+  |> Repo.preload([
+    #
+    assignments: from(a in StudentLive.Schemas.Assignment, order_by: [asc: a.id]),
+    enrollments:
+      from(e in StudentLive.Schemas.Enrollment,
+        join: s in assoc(e, :student),
+        preload: [student: s],
+        order_by: [asc: e.inserted_at]
+      )
+  ])
+  end
+
+
+
+  def get_course_status(%Course{} = course) do
+  today = Date.utc_today()
+
+  cond do
+    course.start_date &&
+        Date.compare(today, course.start_date) in [:eq, :gt] ->
+      "Started"
+
+    course.current_enrollment_count >= course.maximum_capacity ->
+      "Full"
+
+    true ->
+      "Open"
+  end
+end
+
+  def get_enrollment_status(student_id, course_id) when is_integer(student_id) and is_integer(course_id) do
+  case Repo.get_by(Enrollment, student_id: student_id, course_id: course_id) do
+    nil -> nil
+    %Enrollment{status: status} -> status
+  end
+  end
+
   def get_assignment!(id), do: Repo.get!(Assignment, id)
 end

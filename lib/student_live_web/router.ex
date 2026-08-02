@@ -14,6 +14,7 @@ defmodule StudentLiveWeb.Router do
     plug :accepts, ["json"]
   end
 
+
   scope "/", StudentLiveWeb do
     pipe_through :browser
 
@@ -36,11 +37,22 @@ defmodule StudentLiveWeb.Router do
     # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
 
-    scope "/dev" do
-      pipe_through :browser
+    # lib/student_live_web/router.ex
 
-      live_dashboard "/dashboard", metrics: StudentLiveWeb.Telemetry
-      forward "/mailbox", Plug.Swoosh.MailboxPreview
-    end
+  # lib/student_live_web/router.ex
+
+  if Application.compile_env(:student_live, :dev_routes) do
+  scope "/dev" do
+    pipe_through :browser
+
+    live_dashboard "/dashboard",
+      metrics: StudentLiveWeb.Telemetry,
+      additional_pages: [
+        oban: Oban.LiveDashboard # Works once oban_live_dashboard is installed
+      ]
+
+    forward "/mailbox", Plug.Swoosh.MailboxPreview
+  end
+  end
   end
 end

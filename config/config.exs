@@ -46,6 +46,13 @@ config :esbuild,
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]
 
+
+ # configure for  Oban
+config :student_live, Oban,
+  repo: StudentLive.Repo,
+  plugins: [Oban.Plugins.Pruner],
+  queues: [default: 10, enrollments: 5]
+
 # Configure tailwind (the version is required)
 config :tailwind,
   version: "4.3.0",
@@ -57,6 +64,8 @@ config :tailwind,
     cd: Path.expand("..", __DIR__),
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]
+
+
 
 # Configure Elixir's Logger
 config :logger, :default_formatter,

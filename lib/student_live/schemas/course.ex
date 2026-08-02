@@ -22,6 +22,8 @@ defmodule StudentLive.Schemas.Course do
     course
     |> cast(attrs, [:title, :description, :outline_pdf_path, :start_date, :end_date, :maximum_capacity, :current_enrollment_count])
     |> validate_required([:title, :start_date, :end_date, :maximum_capacity])
-    |> validate_number(:maximum_capacity, greater_than: 0)
+    |> validate_number(:maximum_capacity, greater_than_or_equal_to: 0)
   end
+
+
 end

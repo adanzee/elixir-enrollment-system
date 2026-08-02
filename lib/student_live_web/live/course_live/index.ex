@@ -6,6 +6,7 @@ defmodule StudentLiveWeb.CourseLive.Index do
   def mount(_params, _session, socket) do
     courses = Courses.list_courses()
     {:ok, assign(socket, courses: courses)}
+
   end
 
   @impl true
