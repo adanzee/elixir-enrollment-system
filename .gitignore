@@ -38,3 +38,4 @@ npm-debug.log
 static/submissions/*.pdf
 static/uploads/*.pdf
 
+.github/

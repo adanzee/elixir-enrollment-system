@@ -3,25 +3,6 @@ defmodule StudentLive.Academic do
   alias StudentLive.Repo
   alias StudentLive.Schemas.{Student, Course, Assignment, Enrollment, Submission}
 
-
-
-  def list_courses do
-  courses = Repo.all(CourseStats)
-
-  counts =
-    from(e in Enrollment,
-      group_by: e.course_id,
-      select: {e.course_id, count(e.id)}
-    )
-    |> Repo.all()
-    |> Map.new()
-
-  Enum.map(courses, fn course ->
-    count = Map.get(counts, course.id, 0)
-    Map.put(course, :enrolled_count, count)
-  end)
-  end
-
   def get_course!(id) do
     Course
     |> Repo.get!(id)

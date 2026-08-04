@@ -197,7 +197,7 @@ defmodule StudentLiveWeb.CourseLive.Show do
     end
   end
 
- @impl true
+
 @impl true
 def handle_info({:student_promoted, student_id}, socket) do
   course_id = socket.assigns.course.id
