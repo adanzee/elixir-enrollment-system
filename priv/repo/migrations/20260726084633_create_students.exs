@@ -5,6 +5,7 @@ defmodule StudentLive.Repo.Migrations.CreateStudents do
     create table(:students) do
       add :name, :string, null: false
       add :email, :string, null: false
+      add :hashed_password, :string, null: false
 
       timestamps()
     end

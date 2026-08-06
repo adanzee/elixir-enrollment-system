@@ -313,6 +313,39 @@ defmodule StudentLiveWeb.CoreComponents do
   end
 
   @doc """
+  Renders a simple form with slots for inner content and submit/form actions.
+  """
+  attr :for, :any, required: true, doc: "the data structure for the form"
+  attr :as, :any, default: nil, doc: "the server side parameter prefix or name"
+  attr :change, :string, default: nil, doc: "the phx-change event"
+  attr :submit, :string, default: nil, doc: "the phx-submit event"
+  attr :class, :any, default: nil, doc: "extra CSS classes for the form tag"
+  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the form container"
+
+  slot :inner_block, required: true
+  slot :actions, doc: "the slot for form actions, such as a submit button"
+
+  def simple_form(assigns) do
+    ~H"""
+    <.form
+      for={@for}
+      as={@as}
+      phx-change={@change}
+      phx-submit={@submit}
+      class={@class}
+      {@rest}
+    >
+      <div class="space-y-4">
+        {render_slot(@inner_block)}
+        <div :for={action <- @actions} class="mt-2 flex items-center justify-between gap-6">
+          {render_slot(action)}
+        </div>
+      </div>
+    </.form>
+    """
+  end
+
+  @doc """
   Renders a header with title.
   """
   slot :inner_block, required: true

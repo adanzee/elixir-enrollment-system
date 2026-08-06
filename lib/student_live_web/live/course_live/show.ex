@@ -4,16 +4,40 @@ defmodule StudentLiveWeb.CourseLive.Show do
   alias StudentLive.Schemas.Student
 
   @impl true
-  def mount(%{"id" => id}, _session, socket) do
+  def mount(%{"id" => id} = params, session, socket) do
     course_id = String.to_integer(id)
-    course =Courses.get_course_with_assignments!(course_id)
+    course = Courses.get_course_with_assignments!(course_id)
     count = Courses.active_enrollment_count(course_id)
+
     if connected?(socket) do
-        IO.inspect(course_id, label: "SUBSCRIBED TO COURSE")
+      IO.inspect(course_id, label: "SUBSCRIBED TO COURSE")
       Phoenix.PubSub.subscribe(StudentLive.PubSub, "course:#{course_id}")
     end
 
 
+    current_student = socket.assigns[:current_student] || Accounts.get_student(session["student_id"])
+    email_param = params["email"]
+
+    student =
+      cond do
+        current_student ->
+          current_student
+
+        is_binary(email_param) and String.trim(email_param) != "" ->
+          Accounts.get_student_by_email(URI.decode(email_param) |> String.trim())
+
+        true ->
+          nil
+      end
+
+    is_enrolled =
+      if student do
+        Courses.enrolled?(student.id, course_id)
+      else
+        false
+      end
+
+    student_email = if student, do: student.email, else: ""
 
     socket =
       socket
@@ -21,15 +45,15 @@ defmodule StudentLiveWeb.CourseLive.Show do
       |> assign(:active_enrollment_count, count)
       |> assign(:course_status, Courses.get_course_status(course, count))
       |> assign(:pdf_url, static_pdf_path(course.outline_pdf_path))
-      |> assign(:email, "")
-      |> assign(:student, nil)
-      |> assign(:is_enrolled, false)
-      |> assign(:registration_needed, false)
+      |> assign(:email, student_email)
+      |> assign(:student, student)
+      |> assign(:current_student, current_student || student)
+      |> assign(:is_enrolled, is_enrolled)
+      |> assign(:registration_needed, is_nil(student))
       |> assign(:submissions_by_assignment, %{})
 
     {:ok, socket}
   end
-
 
   @impl true
   def handle_params(params, _url, socket) do
@@ -81,90 +105,67 @@ defmodule StudentLiveWeb.CourseLive.Show do
 
   @impl true
   def handle_event("register_and_enroll", params, socket) do
-    course_id = socket.assigns.course.id
+  current_student = socket.assigns.current_student
+  course_id = socket.assigns.course.id
+  input_email = String.downcase(String.trim(params["email"] || ""))
 
+
+  if current_student && input_email != String.downcase(String.trim(current_student.email)) do
+    {:noreply,
+     socket
+     |> put_flash(:error, "Email is invalid. You can only use your registered email (#{current_student.email}).")}
+  else
     case Courses.register_and_enroll(params, course_id) do
-      {:ok, {student, enrollment}} ->
-
-        is_active =
-          enrollment.status in [:active, "active"]
-
-        msg =
-          if is_active do
-            "Successfully registered and enrolled in the course!"
-          else
-            "Course is full. You have been added to the waitlist."
-          end
-
-
-        socket =
-          socket
-          |> refresh_course(course_id)
-
-
-        submissions =
-          load_student_submissions(
-            student.id,
-            socket.assigns.course.assignments
-          )
-
-
+      {:ok, {_student, _enrollment}} ->
         {:noreply,
          socket
-         |> assign(:student, student)
-         |> assign(:is_enrolled, is_active)
-         |> assign(:submissions_by_assignment, submissions)
-         |> assign(:registration_needed, false)
-         |> put_flash(:info, msg)}
+         |> put_flash(:info, "Successfully enrolled in the course!")
+         |> push_navigate(to: ~p"/dashboard")}
 
+      {:error, %Ecto.Changeset{}} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Email or registration details are invalid.")}
 
       {:error, :already_enrolled} ->
         {:noreply,
-         put_flash(socket, :error, "You are already enrolled.")}
+         socket
+         |> put_flash(:error, "You are already enrolled in this course.")}
 
-
-      {:error, reason} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           "Registration failed: #{inspect(reason)}"
-         )}
-    end
-  end
-
-
-  @impl true
-  def handle_event("deregister", _params, socket) do
-    student_id = socket.assigns.student.id
-    course_id = socket.assigns.course.id
-
-
-    case Courses.deregister_student(student_id, course_id) do
-      {:ok, _} ->
+      {:error, reason} when is_binary(reason) ->
         {:noreply,
          socket
-         |> refresh_course(course_id)
-         |> assign(:is_enrolled, false)
-         |> assign(:submissions_by_assignment, %{})
-         |> put_flash(:info, "Successfully deregistered from course.")}
+         |> put_flash(:error, reason)}
 
-
-      {:error, :course_started} ->
+      {:error, _reason} ->
         {:noreply,
-         put_flash(socket, :error, "Course already started. Cannot deregister." )}
-
-
-      {:error, :not_found} ->
-        {:noreply, put_flash( socket, :error, "Enrollment not found." )}
-
-
-      {:error, _} ->
-        {:noreply, put_flash( socket, :error, "Failed to deregister." )}
+         socket
+         |> put_flash(:error, "Email is invalid or registration failed.")}
     end
   end
+end
 
+  @impl true
+  def handle_event("enroll", %{"email" => input_email}, socket) do
+  current_student = socket.assigns.current_student
+  course_id = socket.assigns.course.id
 
+  case Courses.enroll_student_in_course(current_student, course_id, input_email) do
+    {:ok, _enrollment} ->
+      socket =
+        socket
+        |> put_flash(:info, "Successfully enrolled in the course!")
+        |> push_navigate(to: ~p"/dashboard")
+
+      {:noreply, socket}
+
+    {:error, reason} when is_binary(reason) ->
+      {:noreply, put_flash(socket, :error, reason)}
+
+    {:error, _changeset} ->
+      {:noreply, put_flash(socket, :error, "Enrollment failed. Please try again.")}
+  end
+  end
   @impl true
   def handle_event("close_modal", _params, socket) do
     {:noreply,
@@ -201,7 +202,7 @@ defmodule StudentLiveWeb.CourseLive.Show do
 @impl true
 def handle_info({:student_promoted, student_id}, socket) do
   course_id = socket.assigns.course.id
-  student = Accounts.get_student!(student_id)
+  student = Accounts.get_student(student_id)
 
   socket =
     socket
@@ -273,7 +274,11 @@ def render(assigns) do
         <%= message %>
       </div>
     <% end %>
-    <.link navigate={~p"/"} class="text-white-600 hover:underline text-sm mb-4 inline-block font-medium">&larr; Back to Courses</.link>
+    <.link navigate={~p"/courses"} class="text-white-600 hover:underline text-sm mb-4 inline-block font-medium">&larr; Back to Courses</.link>
+    <div class="flex justify-end">
+        <.link navigate={ ~p"/dashboard"} class="inline-block mb-4 bg-teal-600 text-white px-4 py-2 rounded">
+        Go to Dashboard</.link>
+      </div>
     <div class="bg-white p-6 rounded-lg shadow-sm border mb-8">
     <div class="flex justify-between items-center mb-2">
      <h1 class="text-3xl text-gray-900 font-bold"><%= @course.title %></h1>
@@ -295,7 +300,7 @@ def render(assigns) do
       <%= if @student && @is_enrolled do %>
         <div class="mt-4 p-4 bg-green-50 text-green-900 border border-green-200 rounded flex justify-between items-center">
           <span> Enrolled as:<strong> <%= @student.name %></strong> (<%= @student.email %>)</span>
-          <button phx-click="deregister" class="bg-red-600 text-white px-4 py-2 rounded"> Deregister </button>
+
         </div>
       <% end %>
       </div>

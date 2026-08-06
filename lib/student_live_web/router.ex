@@ -1,5 +1,7 @@
 defmodule StudentLiveWeb.Router do
   use StudentLiveWeb, :router
+  import StudentLiveWeb.UserAuth
+
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -8,6 +10,28 @@ defmodule StudentLiveWeb.Router do
     plug :put_root_layout, html: {StudentLiveWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug :fetch_current_student
+  end
+
+  # user who are logged in
+  pipeline :student_auth do
+    plug :require_authenticated_student
+  end
+
+  # user who are not logged in
+  pipeline :student_guest do
+    plug :redirect_if_authenticated_student
+  end
+
+
+  scope "/", StudentLiveWeb do
+    pipe_through :browser
+
+    # Unauthenticated landing page
+    live_session :public_landing do
+      live "/", Live.Main, :index
+      live "/courses", CourseLive.Index, :index
+    end
   end
 
   pipeline :api do
@@ -15,12 +39,33 @@ defmodule StudentLiveWeb.Router do
   end
 
 
-  scope "/", StudentLiveWeb do
-    pipe_through :browser
 
-    live "/", CourseLive.Index, :index
-    live "/courses/:id", CourseLive.Show, :show
-    live "/assignments/:id", AssignmentLive.Show, :show
+  scope "/", StudentLiveWeb do
+    pipe_through [:browser, :student_guest]
+
+    live_session :guest_auth,
+      on_mount: [{StudentLiveWeb.UserAuth, :redirect_if_authenticated_student}] do
+      live "/login", AuthLive.LoginLive, :new
+      live "/register", AuthLive.RegisterLive, :new
+    end
+
+    post "/login", StudentSessionController, :create
+    post "/register", StudentSessionController, :register
+  end
+
+
+  scope "/", StudentLiveWeb do
+    pipe_through [:browser, :student_auth]
+
+    delete "/logout", StudentSessionController, :delete
+
+    live_session :authenticated_student,
+      on_mount: [{StudentLiveWeb.UserAuth, :ensure_authenticated}] do
+
+      live "/courses/:id", CourseLive.Show, :show
+      live "/assignments/:id", AssignmentLive.Show, :show
+      live "/dashboard", DashboardLive, :index
+    end
   end
 
   # Other scopes may use custom stacks.
@@ -46,11 +91,7 @@ defmodule StudentLiveWeb.Router do
     pipe_through :browser
 
     live_dashboard "/dashboard",
-      metrics: StudentLiveWeb.Telemetry,
-      additional_pages: [
-        oban: Oban.LiveDashboard # Works once oban_live_dashboard is installed
-      ]
-
+    metrics: StudentLiveWeb.Telemetry
     forward "/mailbox", Plug.Swoosh.MailboxPreview
   end
   end

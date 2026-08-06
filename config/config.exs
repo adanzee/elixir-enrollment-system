@@ -22,6 +22,18 @@ config :student_live, StudentLiveWeb.Endpoint,
   pubsub_server: StudentLive.PubSub,
   live_view: [signing_salt: "v5UPO0CJ"]
 
+
+ # endpoint configuration
+ config :student_live, StudentLiveWeb.Endpoint,
+  session_options: [
+    store: :cookie,
+    key: "_student_live_key",
+    signing_salt: "Z5jFuGcu",
+    same_site: "Lax",
+    max_age: 60 * 60 * 24 * 7
+
+  ]
+
 # Configure LiveView
 config :phoenix_live_view,
   # the attribute set on all root tags. Used for Phoenix.LiveView.ColocatedCSS.

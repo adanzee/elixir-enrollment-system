@@ -1,5 +1,4 @@
 alias StudentLive.Repo
-alias StudentLive.Schemas.Student
 alias StudentLive.Schemas.{Course, Assignment}
 
 # to clean any existing data
@@ -7,25 +6,10 @@ Repo.delete_all(StudentLive.Schemas.Submission)
 Repo.delete_all(StudentLive.Schemas.Enrollment)
 Repo.delete_all(Assignment)
 Repo.delete_all(Course)
-Repo.delete_all(Student)
+
 
 #  Students
-students_data = [
-  %{name: "Alice Smith", email: "alice@example.com"},
-  %{name: "Bob Jones", email: "bob@example.com"},
-  %{name: "Charlie Brown", email: "charlie@example.com"}
-]
-
-students =
-  Enum.map(students_data, fn attrs ->
-    %Student{}
-    |> Student.changeset(attrs)
-    |> Repo.insert!()
-  end)
-
-# to generate today's date
 today = Date.utc_today()
-
 # Courses
 courses_data = [
   %{
@@ -125,4 +109,4 @@ Enum.each(assignments_data, fn attrs ->
   |> Repo.insert!()
 end)
 
-IO.puts("Successfully seeded #{length(students)} students, #{length(courses)} courses, and #{length(assignments_data)} assignments.")
+IO.puts("Successfully seeded  #{length(courses)} courses, and #{length(assignments_data)} assignments.")

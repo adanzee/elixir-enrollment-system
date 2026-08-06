@@ -172,6 +172,12 @@ defmodule StudentLiveWeb.AssignmentLive.Show do
         &larr; Back to Course Details
       </.link>
 
+
+      <div class="flex justify-end">
+        <.link navigate={ ~p"/dashboard"} class="inline-block mb-4 bg-teal-600 text-white px-4 py-2 rounded">
+        Go to Dashboard</.link>
+      </div>
+
       <div class="bg-white p-6 rounded-lg shadow-sm border mb-8">
         <h1 class="text-2xl text-gray-800 font-bold mb-2"><%= @assignment.title %></h1>
         <p class="text-gray-600 mb-4"><%= @assignment.description %></p>
@@ -269,6 +275,7 @@ defmodule StudentLiveWeb.AssignmentLive.Show do
           <% end %>
         </div>
       <% end %>
+
     </div>
     """
   end

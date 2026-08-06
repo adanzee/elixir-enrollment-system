@@ -8,7 +8,7 @@ defmodule StudentLive.Courses do
     Repo.all(Course)
   end
 
-  def get_course!(id), do: Repo.get!(Course, id)
+  def get_course!(id), do: Repo.get(Course, id)
 
   def get_course_with_assignments!(id) do
     Course
@@ -28,24 +28,37 @@ defmodule StudentLive.Courses do
   end
 
   def enrolled?(_student, _course_id), do: false
-def enroll_student(student_id, course_id) do
-  Repo.transaction(fn ->
-
-    course = lock_course(course_id)
-
-    create_enrollment(student_id, course)
-
-  end)
-end
 
 
+def enroll_student(student_id, course_id) when is_integer(student_id) and is_integer(course_id) do
+    transaction_result =
+      Repo.transaction(fn ->
+        course = lock_course(course_id)
+        create_enrollment(student_id, course)
+      end)
+
+    case transaction_result do
+      {:ok, %Enrollment{} = enrollment} ->
+        {:ok, enrollment}
+
+      {:error, :already_enrolled} ->
+        {:error, "You are already enrolled in this course."}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:error, changeset}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
  def register_and_enroll(attrs, course_id) do
+  result =
   Repo.transaction(fn ->
 
     course = lock_course(course_id)
 
     student =
-      case Repo.get_by(Student, email: attrs["email"]) do
+      case Repo.get_by(Student, email: String.downcase(String.trim(attrs["email"]))) do
         nil ->
           case %Student{}
                |> Student.changeset(attrs)
@@ -68,6 +81,11 @@ end
     {student, enrollment}
 
   end)
+
+  case result do
+    {:ok, {student, enrollment}} -> {:ok, student, enrollment}
+    {:error, reason} -> {:error, reason}
+  end
 end
 
   defp lock_course(course_id) do
@@ -170,6 +188,30 @@ end
         order_by: [asc: e.inserted_at]
       )
   ])
+  end
+
+  def list_enrolled_courses_for_student(student_id) do
+    query =
+      from c in Course,
+        join: e in Enrollment,
+        on: e.course_id == c.id,
+        where: e.student_id == ^student_id and e.status == :active,
+        select: c
+
+    Repo.all(query)
+  end
+
+  def enroll_student_in_course(%Student{} = current_student, course_id, input_email) do
+    registered_email = String.downcase(String.trim(current_student.email))
+    submitted_email = String.downcase(String.trim(to_string(input_email)))
+
+    cond do
+      submitted_email != registered_email ->
+        {:error, "Security Violation: You can only enroll using your registered account email (#{current_student.email})."}
+
+      true ->
+        enroll_student(current_student.id, course_id)
+    end
   end
 
 

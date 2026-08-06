@@ -27,9 +27,9 @@ defmodule StudentLiveWeb.Layouts do
   """
   attr :flash, :map, required: true, doc: "the map of flash messages"
 
-  attr :current_scope, :map,
+  attr :current_student, :map,
     default: nil,
-    doc: "the current [scope](https://phoenix.hexdocs.pm/scopes.html)"
+    doc: "currently logged in student"
 
   slot :inner_block, required: true
 
@@ -44,6 +44,23 @@ defmodule StudentLiveWeb.Layouts do
       </div>
       <div class="flex-none">
         <ul class="flex flex-column px-1 space-x-4 items-center">
+        <%= if @current_student do %>
+        <li>
+          <span>
+          <%= @current_student.email %>
+          </span>
+        </li>
+
+         <li>
+           <.link
+             href="/logout"
+             method="delete"
+             class="btn btn-error">ogout
+
+             </.link>
+             </li>
+
+              <% end %>
           <li>
             <a href="https://phoenixframework.org/" class="btn btn-ghost">Website</a>
           </li>
