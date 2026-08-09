@@ -62,6 +62,7 @@ defmodule StudentLiveWeb.Router do
     live_session :authenticated_student,
       on_mount: [{StudentLiveWeb.UserAuth, :ensure_authenticated}] do
 
+      live "/course/register/:id", CourseLive.CourseRegister, :register
       live "/courses/:id", CourseLive.Show, :show
       live "/assignments/:id", AssignmentLive.Show, :show
       live "/dashboard", DashboardLive, :index

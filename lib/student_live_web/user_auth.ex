@@ -1,9 +1,9 @@
 defmodule StudentLiveWeb.UserAuth do
   use StudentLiveWeb, :verified_routes
+  alias StudentLive.Accounts
 
   import Plug.Conn
 
-  alias StudentLive.{Accounts, Academic}
 
 
   def log_in_student(conn, student) do
@@ -39,7 +39,7 @@ def log_out_student(conn) do
     else
       conn
       |> Phoenix.Controller.put_flash(:error, "You must log in to access this page.")
-      |> Phoenix.Controller.redirect(to: ~p"/courses")
+      |> Phoenix.Controller.redirect(to: ~p"/register")
       |> halt()
     end
   end

@@ -1,219 +1,63 @@
 defmodule StudentLiveWeb.CourseLive.Show do
   use StudentLiveWeb, :live_view
   alias StudentLive.{Courses, Accounts}
-  alias StudentLive.Schemas.Student
+
+
+ @impl true
+def mount(%{"id" => id}, session, socket) do
+  course_id = String.to_integer(id)
+  IO.inspect(id, label: "URL ID")
+  IO.inspect(course_id, label: "Course ID")
+  course = Courses.get_course_with_assignments(course_id)
+  count = Courses.active_enrollment_count(course_id)
+
+  if connected?(socket) do
+    Phoenix.PubSub.subscribe(
+      StudentLive.PubSub,
+      "course:#{course_id}"
+    )
+  end
+
+  current_student =
+    socket.assigns[:current_student] ||
+      Accounts.get_student(session["student_id"])
+
+  is_enrolled =
+  if current_student do
+    Courses.enrolled?(current_student.id, course_id)
+  else
+    false
+  end
+
+  socket =
+  socket
+  |> assign(:course, course)
+  |> assign(:active_enrollment_count, count)
+  |> assign(:course_status, Courses.get_course_status(course, count))
+  |> assign(:pdf_url, static_pdf_path(course.outline_pdf_path))
+  |> assign(:student, current_student)
+  |> assign(:current_student, current_student)
+  |> assign(:is_enrolled, is_enrolled)
+
+
+    {:ok, socket}
+end
 
   @impl true
-  def mount(%{"id" => id} = params, session, socket) do
-    course_id = String.to_integer(id)
-    course = Courses.get_course_with_assignments!(course_id)
-    count = Courses.active_enrollment_count(course_id)
-
-    if connected?(socket) do
-      IO.inspect(course_id, label: "SUBSCRIBED TO COURSE")
-      Phoenix.PubSub.subscribe(StudentLive.PubSub, "course:#{course_id}")
-    end
-
-
-    current_student = socket.assigns[:current_student] || Accounts.get_student(session["student_id"])
-    email_param = params["email"]
-
-    student =
-      cond do
-        current_student ->
-          current_student
-
-        is_binary(email_param) and String.trim(email_param) != "" ->
-          Accounts.get_student_by_email(URI.decode(email_param) |> String.trim())
-
-        true ->
-          nil
-      end
-
-    is_enrolled =
-      if student do
-        Courses.enrolled?(student.id, course_id)
-      else
-        false
-      end
-
-    student_email = if student, do: student.email, else: ""
+  def handle_info({:student_promoted, student_id}, socket) do
+    course_id = socket.assigns.course.id
+    student = Accounts.get_student(student_id)
 
     socket =
       socket
-      |> assign(:course, course)
-      |> assign(:active_enrollment_count, count)
-      |> assign(:course_status, Courses.get_course_status(course, count))
-      |> assign(:pdf_url, static_pdf_path(course.outline_pdf_path))
-      |> assign(:email, student_email)
-      |> assign(:student, student)
-      |> assign(:current_student, current_student || student)
-      |> assign(:is_enrolled, is_enrolled)
-      |> assign(:registration_needed, is_nil(student))
-      |> assign(:submissions_by_assignment, %{})
+      |> refresh_course(course_id)
+      |> put_flash(:info, "#{student.email} has been promoted from the waitlist.")
 
-    {:ok, socket}
+    {:noreply, socket}
   end
-
-  @impl true
-  def handle_params(params, _url, socket) do
-    email = params["email"] || socket.assigns.email || ""
-    course_id = socket.assigns.course.id
-
-    if email != "" do
-      {:noreply, load_student_by_email(socket, email, course_id)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-
-  @impl true
-  def handle_event("lookup_email", %{"email" => email}, socket) do
-    course_id = socket.assigns.course.id
-
-    case Accounts.get_student_by_email(email) do
-      nil ->
-        {:noreply,
-         socket
-         |> assign(:email, email)
-         |> assign(:student, nil)
-         |> assign(:is_enrolled, false)
-         |> assign(:registration_needed, true)}
-
-      %Student{} = student ->
-        status = Courses.get_enrollment_status(student.id, course_id)
-
-        is_enrolled = status in [:active, "active"]
-
-        submissions =
-          load_student_submissions(
-            student.id,
-            socket.assigns.course.assignments
-          )
-
-        {:noreply,
-         socket
-         |> assign(:email, email)
-         |> assign(:student, student)
-         |> assign(:is_enrolled, is_enrolled)
-         |> assign(:registration_needed, not is_enrolled)
-         |> assign(:submissions_by_assignment, submissions)}
-    end
-  end
-
-
-  @impl true
-  def handle_event("register_and_enroll", params, socket) do
-  current_student = socket.assigns.current_student
-  course_id = socket.assigns.course.id
-  input_email = String.downcase(String.trim(params["email"] || ""))
-
-
-  if current_student && input_email != String.downcase(String.trim(current_student.email)) do
-    {:noreply,
-     socket
-     |> put_flash(:error, "Email is invalid. You can only use your registered email (#{current_student.email}).")}
-  else
-    case Courses.register_and_enroll(params, course_id) do
-      {:ok, {_student, _enrollment}} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Successfully enrolled in the course!")
-         |> push_navigate(to: ~p"/dashboard")}
-
-      {:error, %Ecto.Changeset{}} ->
-        {:noreply,
-         socket
-         |> put_flash(:error, "Email or registration details are invalid.")}
-
-      {:error, :already_enrolled} ->
-        {:noreply,
-         socket
-         |> put_flash(:error, "You are already enrolled in this course.")}
-
-      {:error, reason} when is_binary(reason) ->
-        {:noreply,
-         socket
-         |> put_flash(:error, reason)}
-
-      {:error, _reason} ->
-        {:noreply,
-         socket
-         |> put_flash(:error, "Email is invalid or registration failed.")}
-    end
-  end
-end
-
-  @impl true
-  def handle_event("enroll", %{"email" => input_email}, socket) do
-  current_student = socket.assigns.current_student
-  course_id = socket.assigns.course.id
-
-  case Courses.enroll_student_in_course(current_student, course_id, input_email) do
-    {:ok, _enrollment} ->
-      socket =
-        socket
-        |> put_flash(:info, "Successfully enrolled in the course!")
-        |> push_navigate(to: ~p"/dashboard")
-
-      {:noreply, socket}
-
-    {:error, reason} when is_binary(reason) ->
-      {:noreply, put_flash(socket, :error, reason)}
-
-    {:error, _changeset} ->
-      {:noreply, put_flash(socket, :error, "Enrollment failed. Please try again.")}
-  end
-  end
-  @impl true
-  def handle_event("close_modal", _params, socket) do
-    {:noreply,
-     assign(socket, :registration_needed, false)}
-  end
-
-  defp load_student_by_email(socket, email, course_id) do
-    case Accounts.get_student_by_email(email) do
-      %Student{} = student ->
-        status =
-          Courses.get_enrollment_status(student.id, course_id)
-          is_enrolled = status in [:active, "active"]
-          submissions =
-          load_student_submissions(student.id,
-            socket.assigns.course.assignments)
-         socket
-        |> assign(:student, student)
-        |> assign(:email, email)
-        |> assign(:is_enrolled, is_enrolled)
-        |> assign(:registration_needed, not is_enrolled)
-        |> assign(:submissions_by_assignment, submissions)
-
-
-      nil ->
-        socket
-        |> assign(:email, email)
-        |> assign(:student, nil)
-        |> assign(:registration_needed, true)
-
-    end
-  end
-
-
-@impl true
-def handle_info({:student_promoted, student_id}, socket) do
-  course_id = socket.assigns.course.id
-  student = Accounts.get_student(student_id)
-
-  socket =
-    socket
-    |> refresh_course(course_id)
-    |> put_flash(:info, "#{student.email} has been promoted from the waitlist.")
-
-  {:noreply, socket}
-end
 
   defp refresh_course(socket, course_id) do
-    course = Courses.get_course_with_assignments!(course_id)
+    course = Courses.get_course_with_assignments(course_id)
     count = Courses.active_enrollment_count(course_id)
 
     socket
@@ -222,9 +66,7 @@ end
     |> assign(:course_status, Courses.get_course_status(course, count))
   end
 
-  defp load_student_submissions(_student_id, _assignments) do
-    %{}
-  end
+
 
   defp static_pdf_path(nil), do: nil
 
@@ -235,126 +77,98 @@ end
     "/uploads/#{filename}"
   end
 
-  defp registration_form(assigns) do
-  ~H"""
-  <form phx-submit="register_and_enroll" class="space-y-4">
-
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-      <input type="text" name="name" value={if @student, do: @student.name, else: ""} required placeholder="Enter your full name"
-        class="w-full text-gray-900 border border-gray-300 rounded p-2 text-sm"/>
-    </div>
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-      <input type="email" name="email" value={@email} readonly class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-100 text-gray-600"/>
-    </div>
-    <div class="flex justify-end gap-2 pt-2">
-    <button type="button" phx-click="close_modal" class="px-4 py-2 text-sm border rounded">Cancel</button>
-    <button type="submit" class="px-4 py-2 text-sm bg-green-600 text-white rounded">
-        <%= if @course_status == "Full" do %>
-          Join Waitlist
-        <% else %>
-          Register & Enroll
-        <% end %>
-      </button>
-
-    </div>
-
-  </form>
-  """
-end
-
-
 @impl true
 def render(assigns) do
   ~H"""
-  <div class="max-w-5xl mx-auto py-8 px-4">
-    <%= for {type, message} <- @flash do %>
-      <div class="mb-4 p-4 rounded bg-green-100 text-green-800">
-        <%= message %>
-      </div>
-    <% end %>
-    <.link navigate={~p"/courses"} class="text-white-600 hover:underline text-sm mb-4 inline-block font-medium">&larr; Back to Courses</.link>
-    <div class="flex justify-end">
-        <.link navigate={ ~p"/dashboard"} class="inline-block mb-4 bg-teal-600 text-white px-4 py-2 rounded">
-        Go to Dashboard</.link>
-      </div>
-    <div class="bg-white p-6 rounded-lg shadow-sm border mb-8">
-    <div class="flex justify-between items-center mb-2">
-     <h1 class="text-3xl text-gray-900 font-bold"><%= @course.title %></h1>
-        <span class="text-sm font-semibold px-3 py-1 rounded bg-gray-100 text-gray-800">Status: <%= @course_status %></span>
-    </div>
-     <p class="text-gray-600 mb-4"><%= @course.description %> </p>
-      <div class="text-sm text-gray-500"><p><strong>Capacity:</strong> <%= @active_enrollment_count %>/<%= @course.maximum_capacity %></p>
-        <p><strong>Available Seats:</strong><%= max(0, @course.maximum_capacity - @active_enrollment_count) %></p>
-        <p> <strong>Schedule:</strong><%= @course.start_date %>-<%= @course.end_date %></p>
-      </div>
-    </div>
-     <div class="bg-stone-50 p-6 rounded-lg border mb-8">
-        <h2 class="text-lg font-semibold text-gray-700 mb-4">Student Access Verification</h2>
-          <form phx-submit="lookup_email">
-          <div class="flex gap-2"><input type="email" name="email" value={@email} required placeholder="student@example.com" class="border rounded p-2 flex-grow text-gray-900"/>
-        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded"> Verify Email</button>
-      </div>
-      </form>
-      <%= if @student && @is_enrolled do %>
-        <div class="mt-4 p-4 bg-green-50 text-green-900 border border-green-200 rounded flex justify-between items-center">
-          <span> Enrolled as:<strong> <%= @student.name %></strong> (<%= @student.email %>)</span>
-
+    <div class="min-h-screen bg-slate-900 text-slate-100 p-6 space-y-6">
+        <.link navigate={~p"/courses"} class="text-white-600 hover:underline text-sm mb-4 inline-block font-medium">
+          &larr; Back to Course Details
+        </.link>
+      <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-800 gap-4">
+        <div>
+          <div class="flex items-center gap-3">
+            <h1 class="text-2xl font-bold text-white tracking-tight">
+              <%= @course.title || "CS 402: Web Architecture & Systems Engineering" %>
+            </h1>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <%= @course_status || "Active" %>
+            </span>
+          </div>
+          <p class="text-sm text-slate-400 mt-1">Course Outline & Assignment Portal</p>
         </div>
-      <% end %>
-      </div>
-      <%= if @registration_needed do %>
-        <div class="fixed inset-0 bg-gray-500/75 flex items-center justify-center z-50">
-          <div class="bg-white rounded-lg p-6 w-full max-w-md">
-            <div class="flex justify-between mb-4">
-              <h2 class="font-bold text-gray-900 text-lg">
-              <%= case @course_status do %>
-              <% "Open" -> %>Register Course
-              <% "Full" -> %> Join Waitlist
-              <% status -> %>Registration <%= status %>
-          <% end %>
-                </h2>
-                <button phx-click="close_modal" class="text-gray-500">✕</button>
+
+        <div class="flex items-center gap-3">
+          <a href={@pdf_url} download class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Download Syllabus
+          </a>
+        </div>
+      </header>
+
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <section class="lg:col-span-7 xl:col-span-8 bg-slate-800/60 rounded-xl border border-slate-800 overflow-hidden shadow-xl">
+          <div class="flex items-center justify-between px-4 py-3 bg-slate-800 border-b border-slate-700/60">
+            <div class="flex items-center gap-2 text-sm font-semibold text-slate-200">
+              <svg class="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"/></svg>
+              Course Syllabus PDF
             </div>
-          <%= case @course_status do %>
-            <% status when status in ["Closed", "Started"] -> %>
-            <div class="bg-red-50 border text-red-800 border-red-200 p-4 rounded">Cannot register.Course is <strong><%= status %></strong>.
+            <span class="text-xs text-slate-400">Scroll to view all pages</span>
           </div>
-              <% "Full" -> %>
-                <div class="bg-yellow-50 border text-yellow-900 p-3 rounded mb-4">Course is full. You will be added to waitlist.
+
+          <div class="relative w-full bg-slate-950 aspect-[4/3] lg:h-[700px]">
+            <iframe
+              src={@pdf_url || "/path/to/syllabus.pdf"}
+              class="w-full h-full border-0"
+              title="Course Syllabus PDF">
+            </iframe>
+          </div>
+        </section>
+        <aside class="lg:col-span-5 xl:col-span-4 space-y-4">
+          <div class="flex items-center justify-between px-1">
+            <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+              <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+              Assignments
+            </h2>
+            <span class="text-xs font-medium px-2 py-1 rounded bg-slate-800 text-slate-400">
+              <%= length(@course.assignments) %> Total
+            </span>
+          </div>
+          <div class="space-y-3 max-h-[700px] overflow-y-auto pr-1">
+            <%= for assignment <- @course.assignments do %>
+              <div class="bg-slate-800/80 hover:bg-slate-800 rounded-xl p-5 border border-slate-700/60 transition-all shadow-md group">
+                <div class="flex items-start justify-between gap-2 mb-2">
+                  <h3 class="font-semibold text-slate-100 group-hover:text-emerald-400 transition-colors">
+                    <%= assignment.title %>
+                  </h3>
+                </div>
+
+                <p class="text-xs text-slate-400 leading-relaxed mb-4">
+                  <%= assignment.description %>
+                </p>
+
+                <div class="flex items-center justify-between pt-3 border-t border-slate-700/40">
+
+
+                  <.link
+                    navigate={~p"/assignments/#{assignment.id}"}
+                    class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-all focus:ring-2 focus:ring-emerald-500 focus:outline-none inline-block">
+                    Submit Assignment
+                  </.link>
+                </div>
               </div>
-                <.registration_form student={@student} email={@email} course_status={@course_status}/>
-                <% "Open" -> %>
-                <.registration_form student={@student} email={@email} course_status={@course_status}/>
-           <% end %>
-           </div>
+            <% end %>
+            <%= if Enum.empty?(@course.assignments) do %>
+              <div class="bg-slate-800/40 rounded-xl p-8 text-center border border-dashed border-slate-700 text-slate-400 text-sm">
+                No assignments published yet.
+              </div>
+            <% end %>
           </div>
-      <% end %>
+        </aside>
 
-    <%= if @student && @is_enrolled do %>
-      <div class="mb-8">
-          <h2 class="text-xl font-bold mb-4">Course Outline</h2>
-      <%= if @pdf_url do %>
-          <iframe src={@pdf_url} class="w-full h-96 border rounded"></iframe>
-      <% else %>
-        <p>No outline available.</p>
-        <% end %>
       </div>
-
-      <div>
-        <h2 class="text-xl font-bold mb-4"> Assignments</h2>
-        <%= for assignment <- @course.assignments do %>
-        <div class="border bg-white rounded-lg p-5 mb-4">
-          <h3 class="font-semibold text-gray-800 text-lg"><%= assignment.title %></h3>
-          <p class="text-gray-600"><%= assignment.description %></p>
-          <.link navigate={ ~p"/assignments/#{assignment.id}?email=#{@student.email}"} class="inline-block mt-3 bg-teal-600 text-white px-4 py-2 rounded"> Submit Assignment</.link>
-        </div>
-        <% end %>
-      </div>
-      <% end %>
     </div>
   """
-
-  end
+end
 end

@@ -3,23 +3,26 @@ defmodule StudentLiveWeb.Live.Main do
 
   def render(assigns) do
     ~H"""
-    <div class="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6 text-center">
-      <h1 class="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-        Welcome to Student Portal
-      </h1>
-      <p class="mt-3 text-lg font-medium text-slate-600">
-        Access your enrolled courses and view assignment progress.
-      </p>
+    <div class="flex min-h-screen flex-col items-center justify-center bg-[#0d1322] text-slate-100 p-6">
+      <div class="w-full max-w-xl text-center space-y-6">
+        <div class="space-y-3">
+          <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+            Welcome to Student Portal
+          </h1>
+          <p class="text-sm text-slate-400 font-medium">
+            Access your enrolled courses and view assignment progress.
+          </p>
+        </div>
 
-      <div class="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+        <div>
+          <.link
+            navigate={~p"/courses"}
+            class="inline-flex items-center justify-center rounded-lg bg-[#00a878] hover:bg-[#008f66] px-5 py-2.5 text-xs font-bold text-white shadow-md transition-all active:scale-[0.98]"
+          >
+            See list of available courses
+          </.link>
+        </div>
 
-
-        <.link
-          navigate={~p"/courses"}
-          class="w-full rounded-2xl border border-slate-200 bg-teal-800 px-8 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-teal-400 hover:border-slate-300 transition-all sm:w-auto"
-        >
-          See list of available courses
-        </.link>
       </div>
     </div>
     """

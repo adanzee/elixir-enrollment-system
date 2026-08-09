@@ -10,9 +10,9 @@ defmodule StudentLive.Courses do
 
   def get_course!(id), do: Repo.get(Course, id)
 
-  def get_course_with_assignments!(id) do
+  def get_course_with_assignments(id) do
     Course
-    |> Repo.get!(id)
+    |> Repo.get(id)
     |> Repo.preload(:assignments)
   end
 
@@ -30,27 +30,7 @@ defmodule StudentLive.Courses do
   def enrolled?(_student, _course_id), do: false
 
 
-def enroll_student(student_id, course_id) when is_integer(student_id) and is_integer(course_id) do
-    transaction_result =
-      Repo.transaction(fn ->
-        course = lock_course(course_id)
-        create_enrollment(student_id, course)
-      end)
 
-    case transaction_result do
-      {:ok, %Enrollment{} = enrollment} ->
-        {:ok, enrollment}
-
-      {:error, :already_enrolled} ->
-        {:error, "You are already enrolled in this course."}
-
-      {:error, %Ecto.Changeset{} = changeset} ->
-        {:error, changeset}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
  def register_and_enroll(attrs, course_id) do
   result =
   Repo.transaction(fn ->
@@ -153,23 +133,25 @@ end
   end
 end
 
-  def deregister_student(student_id, course_id) do
-  enrollment = Repo.get_by(Enrollment, student_id: student_id, course_id: course_id)
+  def deregister_student(%Student{} = current_student, course_id, input_email) do
+    if normalize_email(input_email) != normalize_email(current_student.email) do
+      {:error, "Cannot unenroll using a different email address."}
+    else
+      case Repo.get_by(Enrollment, student_id: current_student.id, course_id: course_id) do
+        nil ->
+          {:error, "You are not enrolled in this course."}
 
-  case enrollment do
-    nil ->
-      {:error, :not_found}
+        %Enrollment{} = enrollment ->
+          course = Repo.get!(Course, course_id)
 
-    enrollment ->
-      course = Repo.get!(Course, course_id)
-
-      if Date.compare(Date.utc_today(), course.start_date) != :lt do
-        {:error, :course_started}
-      else
-        handle_deregister(enrollment, course_id)
+          if Date.compare(Date.utc_today(), course.start_date) != :lt do
+            {:error, "Cannot unenroll after the course has started."}
+          else
+            handle_deregister(enrollment, course_id)
+          end
       end
+    end
   end
-end
 
   def get_assignment(id) do
     Repo.get(Assignment, id)
@@ -210,7 +192,7 @@ end
         {:error, "Security Violation: You can only enroll using your registered account email (#{current_student.email})."}
 
       true ->
-        enroll_student(current_student.id, course_id)
+        execute_enrollment(current_student.id, course_id)
     end
   end
 
@@ -281,4 +263,14 @@ end
   end
 
   def get_assignment!(id), do: Repo.get!(Assignment, id)
+
+  defp normalize_email(email) when is_binary(email), do: String.downcase(String.trim(email))
+  defp normalize_email(_), do: ""
+
+  defp execute_enrollment(student_id, course_id) do
+    Repo.transaction(fn ->
+      course = lock_course(course_id)
+      create_enrollment(student_id, course)
+    end)
+  end
 end
