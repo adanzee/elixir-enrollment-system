@@ -43,14 +43,24 @@ defmodule StudentLiveWeb.CourseLive.Index do
         <div class="min-h-screen bg-slate-900 text-slate-100 p-6">
         <div class="mx-auto max-w-5xl space-y-6">
 
+
         <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-800 gap-4">
-          <div>
-            <h1 class="text-2xl font-bold text-white tracking-tight">
-              Available Courses
-            </h1>
-            <p class="text-sm text-slate-400 mt-1">
-              Explore current academic offerings and seat availability
-            </p>
+          <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 class="text-3xl font-extrabold tracking-tight text-white">
+                Available Courses
+              </h1>
+              <p class="text-sm font-medium text-slate-400 mt-1">
+                Explore current academic offerings and seat availability
+              </p>
+            </div>
+
+            <.link
+              navigate={~p"/dashboard"}
+              class="bg-[#00a878] hover:bg-[#008f66] text-white ml-140 text-xs font-bold px-4 py-2.5 rounded-lg shadow-md transition-colors whitespace-nowrap self-start sm:self-auto"
+            >
+              Go to Dashboard
+            </.link>
           </div>
         </header>
 

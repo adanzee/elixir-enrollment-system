@@ -183,18 +183,9 @@ end
     Repo.all(query)
   end
 
-  def enroll_student_in_course(%Student{} = current_student, course_id, input_email) do
-    registered_email = String.downcase(String.trim(current_student.email))
-    submitted_email = String.downcase(String.trim(to_string(input_email)))
-
-    cond do
-      submitted_email != registered_email ->
-        {:error, "Security Violation: You can only enroll using your registered account email (#{current_student.email})."}
-
-      true ->
-        execute_enrollment(current_student.id, course_id)
-    end
-  end
+ def enroll_student_in_course(%Student{} = current_student, course_id) do
+  execute_enrollment(current_student.id, course_id)
+end
 
 
 

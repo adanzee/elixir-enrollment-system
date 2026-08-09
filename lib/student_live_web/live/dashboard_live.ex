@@ -195,7 +195,7 @@ end
                         </.link>
 
                         <%= if item.can_unenroll? do %>
-                          <button phx-click="unenroll" phx-value-course-id={item.struct.id} data-confirm="Are you sure you want to unenroll from this course?"class="rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors">
+                          <button phx-click="unenroll" phx-value-course-id={item.struct.id} data-confirm="Are you sure you want to unenroll from this course?" class="rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors">
                             Unenroll
                           </button>
                         <% else %>

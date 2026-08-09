@@ -4,22 +4,30 @@ defmodule StudentLiveWeb.CourseLive.CourseRegister do
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    course_id = String.to_integer(id)
-    course = Courses.get_course_with_assignments(course_id)
-    count = Courses.active_enrollment_count(course_id)
+  course_id = String.to_integer(id)
+  course = Courses.get_course_with_assignments(course_id)
+  count = Courses.active_enrollment_count(course_id)
 
-    current_student = socket.assigns.current_student
+  current_student = socket.assigns.current_student
 
-    {:ok,
-     socket
-     |> assign(:course, course)
-     |> assign(:course_id, course_id)
-     |> assign(:active_enrollment_count, count)
-     |> assign(:course_status, Courses.get_course_status(course, count))
-     |> assign(:student, current_student)
-     |> assign(:email, current_student.email)
-     |> assign(:registration_needed, true)}
-  end
+  email =
+    if current_student do
+      current_student.email
+    else
+      ""
+
+    end
+
+  {:ok,
+   socket
+   |> assign(:course, course)
+   |> assign(:email, email)
+   |> assign(:course_id, course_id)
+   |> assign(:active_enrollment_count, count)
+   |> assign(:course_status, Courses.get_course_status(course, count))
+   |> assign(:student, current_student)
+   |> assign(:registration_needed, true)}
+end
 
   @impl true
   def handle_event("close_modal", _params, socket) do
@@ -28,45 +36,31 @@ defmodule StudentLiveWeb.CourseLive.CourseRegister do
   end
 
   @impl true
-  def handle_event("register_and_enroll", params, socket) do
-    current_student = socket.assigns.current_student
+  def handle_event("register_and_enroll", _params, socket) do
+    student = socket.assigns.current_student
     course_id = socket.assigns.course_id
-    input_email = String.downcase(String.trim(params["email"] || ""))
 
-    if current_student && input_email != String.downcase(String.trim(current_student.email)) do
-      {:noreply,
-       socket
-       |> put_flash(:error, "Email is invalid. You can only use your registered email (#{current_student.email}).")}
-    else
-      case Courses.register_and_enroll(params, course_id) do
-        {:ok, _student, _enrollment} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, "Successfully enrolled in the course!")
-           |> push_navigate(to: ~p"/dashboard")}
+    case Courses.enroll_student_in_course(student, course_id) do
+      {:ok, _enrollment} ->
+        {:noreply,
+        socket
+        |> put_flash(:info, "Successfully enrolled in the course!")
+        |> push_navigate(to: ~p"/dashboard")}
 
-        {:error, %Ecto.Changeset{}} ->
-          {:noreply,
-           socket
-           |> put_flash(:error, "Email or registration details are invalid.")}
+      {:error, :already_enrolled} ->
+        {:noreply,
+        put_flash(socket, :error, "You are already enrolled in this course.")}
 
-        {:error, :already_enrolled} ->
-          {:noreply,
-           socket
-           |> put_flash(:error, "You are already enrolled in this course.")}
+      {:error, reason} when is_binary(reason) ->
+        {:noreply,
+        put_flash(socket, :error, reason)}
 
-        {:error, reason} when is_binary(reason) ->
-          {:noreply,
-           socket
-           |> put_flash(:error, reason)}
-
-        {:error, _reason} ->
-          {:noreply,
-           socket
-           |> put_flash(:error, "Email is invalid or registration failed.")}
-      end
+      {:error, _reason} ->
+        {:noreply,
+        put_flash(socket, :error, "Unable to enroll in this course.")}
     end
   end
+
 
   @impl true
   def render(assigns) do
