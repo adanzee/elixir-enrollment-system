@@ -8,9 +8,9 @@ defmodule StudentLiveWeb.Endpoint do
     store: :cookie,
     key: "_student_live_key",
     signing_salt: "Z5jFuGcu",
-    same_site: "Lax"
+    same_site: "Lax",
+    max_age: 60 * 60 * 24 * 7
   ]
-
   socket "/live", Phoenix.LiveView.Socket,
     websocket: [connect_info: [session: @session_options]],
     longpoll: [connect_info: [session: @session_options]]

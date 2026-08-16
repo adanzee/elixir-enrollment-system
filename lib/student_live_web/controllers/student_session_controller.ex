@@ -40,7 +40,7 @@ def register(conn, %{"student" => student_params}) do
       |> put_flash(:info, "Account created successfully.")
       |> UserAuth.log_in_student(student)
 
-    {:error, %Ecto.Changeset{} = changeset} ->
+    {:error, %Ecto.Changeset{} = _changeset} ->
       conn
       |> put_flash(:error, "Email is invalid or already taken.")
       |> redirect(to: ~p"/register")
