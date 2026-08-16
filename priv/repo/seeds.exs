@@ -47,9 +47,9 @@ courses_data = [
     title: "CS401: Functional System Architecture",
     description: "Programming fundamentals.",
     outline_pdf_path: "/uploads/programming_outline.pdf",
-    start_date: Date.add(today, -1),
-    end_date: Date.add(today, 40),
-    maximum_capacity: 12,
+    start_date: Date.add(today, 3),
+    end_date: Date.add(today, 33),
+    maximum_capacity: 1,
 
 
   }

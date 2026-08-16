@@ -66,6 +66,10 @@ defmodule StudentLiveWeb.Router do
       live "/courses/:id", CourseLive.Show, :show
       live "/assignments/:id", AssignmentLive.Show, :show
       live "/dashboard", DashboardLive, :index
+      live "/mailbox", Mail.MailBox
+
+
+
     end
   end
 
@@ -88,6 +92,8 @@ defmodule StudentLiveWeb.Router do
   # lib/student_live_web/router.ex
 
   if Application.compile_env(:student_live, :dev_routes) do
+
+
   scope "/dev" do
     pipe_through :browser
 

@@ -1,8 +1,9 @@
 defmodule StudentLive.Courses do
   import Ecto.Query
-  alias StudentLive.Repo
+  alias StudentLive.{Repo, Mailer}
   alias StudentLive.Schemas.{Course, Assignment, Enrollment}
   alias StudentLive.Schemas.Student
+  alias StudentLive.Emails.StudentEmail
 
   def list_courses do
     Repo.all(Course)
@@ -133,25 +134,70 @@ end
   end
 end
 
-  def deregister_student(%Student{} = current_student, course_id, input_email) do
-    if normalize_email(input_email) != normalize_email(current_student.email) do
-      {:error, "Cannot unenroll using a different email address."}
-    else
-      case Repo.get_by(Enrollment, student_id: current_student.id, course_id: course_id) do
-        nil ->
-          {:error, "You are not enrolled in this course."}
 
-        %Enrollment{} = enrollment ->
-          course = Repo.get!(Course, course_id)
+def register_student(attrs \\ %{}) do
+    %Student{}
+    |> Student.registration_changeset(attrs)
+    |> Repo.insert()
+    |> case do
+      {:ok, student} ->
+        # Send welcome email and broadcast to this student's mailbox
+        student
+        |> StudentEmail.student_registered()
+        |> Mailer.deliver_and_notify(student.id)
 
-          if Date.compare(Date.utc_today(), course.start_date) != :lt do
-            {:error, "Cannot unenroll after the course has started."}
-          else
-            handle_deregister(enrollment, course_id)
-          end
-      end
+        {:ok, student}
+
+      {:error, changeset} ->
+        {:error, changeset}
     end
   end
+
+  def deregister_student(%Student{} = student, course_id, student_email) do
+    course_id = if is_binary(course_id), do: String.to_integer(course_id), else: course_id
+    course = Repo.get(Course, course_id)
+
+    enrollment =
+      Enrollment
+      |> where([e], e.student_id == ^student.id and e.course_id == ^course_id)
+      |> Repo.one()
+
+    cond do
+      is_nil(course) ->
+        {:error, "Course not found"}
+
+      is_nil(enrollment) ->
+        {:error, "You are not enrolled in this course"}
+
+      student.email != student_email ->
+        {:error, "Email verification failed"}
+
+      true ->
+        Repo.transaction(fn ->
+          # 1. Delete enrollment record
+          Repo.delete!(enrollment)
+
+          # 2. Send deregistration confirmation email to the student
+          student
+          |> StudentEmail.student_deregistered(course)
+          |> Mailer.deliver_and_notify(student.id)
+
+          # 3. Enqueue waitlist worker (use the exact module name where your worker is defined)
+          if Code.ensure_loaded?(StudentLive.Workers.ProcessWaitlistWorker) do
+            %{course_id: course.id}
+            |> StudentLive.Workers.ProcessWaitlistWorker.new()
+            |> Oban.insert!()
+          end
+
+          :ok
+        end)
+        |> case do
+          {:ok, _result} -> {:ok, :deregistered}
+          {:error, reason} -> {:error, reason}
+        end
+    end
+  end
+
 
   def get_assignment(id) do
     Repo.get(Assignment, id)

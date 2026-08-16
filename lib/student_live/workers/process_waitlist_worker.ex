@@ -5,8 +5,9 @@ defmodule StudentLive.Workers.ProcessWaitlistWorker do
     unique: [period: 10, fields: [:args, :queue]]
 
   import Ecto.Query
-  alias StudentLive.Repo
+  alias StudentLive.{Repo, Mailer}
   alias StudentLive.Schemas.{Course, Enrollment}
+  alias StudentLive.Emails.StudentEmail
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"course_id" => course_id}}) do
@@ -42,35 +43,36 @@ defmodule StudentLive.Workers.ProcessWaitlistWorker do
   end
 
   defp promote_next_student(course) do
+  next_waitlisted =
+    Enrollment
+    |> where(course_id: ^course.id, status: :waitlisted)
+    |> order_by([e], asc: e.inserted_at)
+    |> preload(:student)
+    |> limit(1)
+    |> Repo.one()
 
-    next_waitlisted =
-      Enrollment
-      |> where(course_id: ^course.id, status: :waitlisted)
-      |> order_by([e], asc: e.inserted_at)
-      |> limit(1)
-      |> Repo.one()
+  case next_waitlisted do
+    %Enrollment{} = enrollment ->
+      updated_enrollment =
+        enrollment
+        |> Enrollment.changeset(%{status: :active})
+        |> Repo.update!()
 
-    case next_waitlisted do
-      %Enrollment{} = enrollment ->
+      # Send promotion email using deliver_and_notify
+      enrollment.student
+      |> StudentEmail.waitlist_promoted(course)
+      |> Mailer.deliver_and_notify(enrollment.student_id)
 
-        updated_enrollment =
-          enrollment
-          |> Enrollment.changeset(%{status: :active})
-          |> Repo.update!()
-          IO.inspect(
-          {:sending_pubsub, course.id, updated_enrollment.student_id},
-          label: "PUBSUB")
+      Phoenix.PubSub.broadcast(
+        StudentLive.PubSub,
+        "course:#{course.id}",
+        {:student_promoted, updated_enrollment.student_id}
+      )
 
-          Phoenix.PubSub.broadcast(
-          StudentLive.PubSub,
-          "course:#{course.id}",
-          {:student_promoted, updated_enrollment.student_id})
-        IO.inspect(
-        {:broadcasting_promotion, updated_enrollment.student_id},label: "PUBSUB work")
-        :promoted
+      :promoted
 
-          nil ->
-            :no_waitlisted_students
-        end
+    nil ->
+      :no_waitlisted_students
   end
+end
 end

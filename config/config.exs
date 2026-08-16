@@ -23,7 +23,10 @@ config :student_live, StudentLiveWeb.Endpoint,
   live_view: [signing_salt: "v5UPO0CJ"]
 
 
- # endpoint configuration
+config :swoosh, :api_client, false
+
+
+ # endpoint configuration for plug
  config :student_live, StudentLiveWeb.Endpoint,
   session_options: [
     store: :cookie,
@@ -62,7 +65,7 @@ config :esbuild,
  # configure for  Oban
 config :student_live, Oban,
   repo: StudentLive.Repo,
-  queues: [default: 10, enrollments: 5]
+  queues: [default: 10, enrollments: 10]
 
 # Configure tailwind (the version is required)
 config :tailwind,

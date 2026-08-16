@@ -1,6 +1,8 @@
 defmodule StudentLiveWeb.CourseLive.CourseRegister do
   use StudentLiveWeb, :live_view
   alias StudentLive.Courses
+  alias StudentLive.Mailer
+  alias StudentLive.Emails.StudentEmail
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -35,32 +37,34 @@ end
 
   end
 
-  @impl true
+ @impl true
   def handle_event("register_and_enroll", _params, socket) do
-    student = socket.assigns.current_student
-    course_id = socket.assigns.course_id
+  student = socket.assigns.current_student
+  course_id = socket.assigns.course_id
 
-    case Courses.enroll_student_in_course(student, course_id) do
-      {:ok, _enrollment} ->
-        {:noreply,
-        socket
-        |> put_flash(:info, "Successfully enrolled in the course!")
-        |> push_navigate(to: ~p"/dashboard")}
+  case Courses.enroll_student_in_course(student, course_id) do
+    {:ok, %{status: status} = _enrollment} when status in [:active, "active"] ->
+      course = socket.assigns[:course] || Courses.get_course!(course_id)
 
-      {:error, :already_enrolled} ->
-        {:noreply,
-        put_flash(socket, :error, "You are already enrolled in this course.")}
+      student
+      |> StudentEmail.enrollment_confirmed(course)
+      |> Mailer.deliver_and_notify()
 
-      {:error, reason} when is_binary(reason) ->
-        {:noreply,
-        put_flash(socket, :error, reason)}
+      {:noreply, socket |> put_flash(:info, "Enrolled successfully!") |> push_navigate(to: ~p"/dashboard")}
 
-      {:error, _reason} ->
-        {:noreply,
-        put_flash(socket, :error, "Unable to enroll in this course.")}
-    end
+    {:ok, %{status: status} = _enrollment} when status in [:waitlisted, "waitlisted"] ->
+      course = socket.assigns[:course] || Courses.get_course!(course_id)
+
+      student
+      |> StudentEmail.waitlist_joined(course)
+      |> Mailer.deliver_and_notify()
+
+      {:noreply, socket |> put_flash(:info, "Course is full. Added to waitlist.") |> push_navigate(to: ~p"/dashboard")}
+
+    {:error, reason} ->
+      {:noreply, put_flash(socket, :error, inspect(reason))}
   end
-
+  end
 
   @impl true
   def render(assigns) do

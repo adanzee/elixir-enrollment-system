@@ -1,9 +1,9 @@
 defmodule StudentLiveWeb.StudentSessionController do
   use StudentLiveWeb, :controller
+
   alias StudentLiveWeb.UserAuth
-
-
-  alias StudentLive.Accounts
+  alias StudentLive.Emails.StudentEmail
+  alias StudentLive.{Accounts, Mailer}
 
   def new(conn, _params) do
     render(conn, :new)
@@ -17,36 +17,38 @@ defmodule StudentLiveWeb.StudentSessionController do
     authenticate(conn, email, password)
   end
 
-  def create(conn, %{"student" => %{"email" => email, "password" => password}}) do
-    case Accounts.authenticate_student(email, password) do
+  def register(conn, %{"student" => student_params}) do
+    # Try create_student or register_student depending on your Accounts context
+    result =
+      if function_exported?(Accounts, :create_student, 1) do
+        Accounts.create_student(student_params)
+      else
+        Accounts.register_student(student_params)
+      end
+
+    case result do
       {:ok, student} ->
+        # 1. Build and dispatch registration welcome email
+        student
+        |> StudentEmail.student_registered()
+        |> Mailer.deliver_and_notify(student.id)
+
+        # 2. Log in and redirect
         conn
-        |> put_flash(:info, "Welcome back!")
+        |> put_flash(:info, "Account created successfully!")
         |> UserAuth.log_in_student(student)
 
-      {:error, :invalid_credentials} ->
+      {:error, %Ecto.Changeset{} = _changeset} ->
         conn
-        |> put_flash(:error, "Invalid email or password.")
-        |> redirect(to: ~p"/login")
+        |> put_flash(:error, "Email is invalid or already taken.")
+        |> redirect(to: ~p"/register")
+
+      {:error, reason} when is_binary(reason) ->
+        conn
+        |> put_flash(:error, reason)
+        |> redirect(to: ~p"/register")
     end
   end
-
-
-
-def register(conn, %{"student" => student_params}) do
-  case Accounts.create_student(student_params) do
-    {:ok, student} ->
-      conn
-      |> put_flash(:info, "Account created successfully.")
-      |> UserAuth.log_in_student(student)
-
-    {:error, %Ecto.Changeset{} = _changeset} ->
-      conn
-      |> put_flash(:error, "Email is invalid or already taken.")
-      |> redirect(to: ~p"/register")
-  end
-end
-
 
   def delete(conn, _params) do
     UserAuth.log_out_student(conn)
@@ -75,5 +77,4 @@ end
         |> redirect(to: ~p"/login")
     end
   end
-
 end
