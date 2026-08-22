@@ -137,7 +137,7 @@ end
 
 def register_student(attrs \\ %{}) do
     %Student{}
-    |> Student.registration_changeset(attrs)
+    |> Student.changeset(attrs)
     |> Repo.insert()
     |> case do
       {:ok, student} ->
@@ -174,15 +174,12 @@ def register_student(attrs \\ %{}) do
 
       true ->
         Repo.transaction(fn ->
-          # 1. Delete enrollment record
           Repo.delete!(enrollment)
 
-          # 2. Send deregistration confirmation email to the student
           student
           |> StudentEmail.student_deregistered(course)
           |> Mailer.deliver_and_notify(student.id)
 
-          # 3. Enqueue waitlist worker (use the exact module name where your worker is defined)
           if Code.ensure_loaded?(StudentLive.Workers.ProcessWaitlistWorker) do
             %{course_id: course.id}
             |> StudentLive.Workers.ProcessWaitlistWorker.new()

@@ -3,7 +3,7 @@ defmodule StudentLiveWeb.StudentSessionController do
 
   alias StudentLiveWeb.UserAuth
   alias StudentLive.Emails.StudentEmail
-  alias StudentLive.{Accounts, Mailer}
+  alias StudentLive.{Accounts, Mailer, Courses}
 
   def new(conn, _params) do
     render(conn, :new)
@@ -18,22 +18,22 @@ defmodule StudentLiveWeb.StudentSessionController do
   end
 
   def register(conn, %{"student" => student_params}) do
-    # Try create_student or register_student depending on your Accounts context
+
     result =
       if function_exported?(Accounts, :create_student, 1) do
         Accounts.create_student(student_params)
       else
-        Accounts.register_student(student_params)
+        Courses.register_student(student_params)
       end
 
     case result do
       {:ok, student} ->
-        # 1. Build and dispatch registration welcome email
+
         student
         |> StudentEmail.student_registered()
         |> Mailer.deliver_and_notify(student.id)
 
-        # 2. Log in and redirect
+
         conn
         |> put_flash(:info, "Account created successfully!")
         |> UserAuth.log_in_student(student)

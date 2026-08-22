@@ -6,7 +6,6 @@ defmodule StudentLiveWeb.Mail.MailBox do
     current_student = socket.assigns.current_student
 
     if connected?(socket) do
-      # Subscribe exclusively to this student's ID
       Phoenix.PubSub.subscribe(StudentLive.PubSub, "mailbox:#{current_student.id}")
     end
 
@@ -19,7 +18,6 @@ defmodule StudentLiveWeb.Mail.MailBox do
     current_student = socket.assigns.current_student
     emails = load_student_emails(current_student.email)
 
-    # Retain current selected email if still present, else default to first
     selected =
       if socket.assigns.selected_email do
         Enum.find(emails, &(email_id(&1) == email_id(socket.assigns.selected_email))) || List.first(emails)
@@ -39,8 +37,6 @@ defmodule StudentLiveWeb.Mail.MailBox do
   @impl true
   def handle_event("clear_emails", _params, socket) do
     current_student = socket.assigns.current_student
-
-    # Only purge emails belonging to this student from memory
     remaining_emails =
       Swoosh.Adapters.Local.Storage.Memory.all()
       |> Enum.reject(&sent_to_student?(&1, current_student.email))
@@ -51,7 +47,7 @@ defmodule StudentLiveWeb.Mail.MailBox do
     {:noreply, assign(socket, emails: [], selected_email: nil)}
   end
 
-  # Filter emails strictly by recipient address
+
   defp load_student_emails(student_email) do
     Swoosh.Adapters.Local.Storage.Memory.all()
     |> Enum.filter(&sent_to_student?(&1, student_email))

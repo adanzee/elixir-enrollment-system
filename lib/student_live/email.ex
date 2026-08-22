@@ -6,7 +6,6 @@ defmodule StudentLive.Email do
   import Ecto.Query
 
   def enroll_student(%Student{} = student, %Course{} = course) do
-    #checking the active count vs the maximun capacity
     active_count =
         Repo.aggregate(
           from(e in Enrollment,
@@ -22,7 +21,6 @@ defmodule StudentLive.Email do
       |> Repo.insert()
       |> case do
         {:ok, enrollment} ->
-          #sending confirmation email
           student
           |> StudentEmail.enrollment_confirmed(course)
           |> Mailer.deliver()

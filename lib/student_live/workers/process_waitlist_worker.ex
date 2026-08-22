@@ -58,7 +58,7 @@ defmodule StudentLive.Workers.ProcessWaitlistWorker do
         |> Enrollment.changeset(%{status: :active})
         |> Repo.update!()
 
-      # Send promotion email using deliver_and_notify
+
       enrollment.student
       |> StudentEmail.waitlist_promoted(course)
       |> Mailer.deliver_and_notify(enrollment.student_id)
