@@ -4,31 +4,26 @@ This document describes the requirements and functionality currently implemented
 
 ---
 
-# 1. Student Registration
+# Student Registration
 
 Students can create an account by providing their required information.
 
 The registration flow:
 
-```text
-Student
-   ↓
-Registration Form
-   ↓
-Validate Input
-   ↓
-Hash Password
-   ↓
-Create Student
-   ↓
-Account Created
+```mermaid
+flowchart TD
+    A["Student"] --> B["Registration Form"]
+    B --> C["Validate Input"]
+    C --> D["Hash Password"]
+    D --> E["Create Student"]
+    E --> F["Account Created"]
 ```
 
 Passwords are hashed using Bcrypt rather than being stored directly.
 
 ---
 
-# 2. Student Login
+# Student Login
 
 Registered students can authenticate through the login interface.
 
@@ -43,7 +38,7 @@ Invalid credentials result in an authentication error.
 
 ---
 
-# 3. Course Browsing
+# Course Browsing
 
 Students can view available courses.
 
@@ -58,7 +53,7 @@ Course information includes:
 
 ---
 
-# 4. Course Enrollment
+# Course Enrollment
 
 Students can enroll using their student identity and the selected course.
 
@@ -98,7 +93,7 @@ status.
 
 ---
 
-# 5. Enrollment Capacity
+# Enrollment Capacity
 
 Course capacity is enforced through database-backed enrollment logic.
 
@@ -121,7 +116,7 @@ The application calculates active enrollments rather than relying on a manually 
 
 ---
 
-# 6. FIFO Waitlist
+# FIFO Waitlist
 
 Waitlisted students are processed in the order they joined.
 
@@ -143,7 +138,7 @@ Student B remains next in the queue.
 
 ---
 
-# 7. Deregistration
+# Deregistration
 
 Students can deregister from courses before the course begins.
 
@@ -151,14 +146,11 @@ The system handles two cases.
 
 ### Active Student
 
-```text
-Active Enrollment
-      ↓
-Remove Enrollment
-      ↓
-Release Seat
-      ↓
-Process Waitlist
+```mermaid
+flowchart TD
+    A["Active Enrollment"] --> B["Remove Enrollment"]
+    B --> C["Release Seat"]
+    C --> D["Process Waitlist"]
 ```
 
 ### Waitlisted Student
@@ -173,7 +165,7 @@ No seat is released because the student was not occupying an active seat.
 
 ---
 
-# 8. Course Start Restriction
+# Course Start Restriction
 
 Once a course has started, students cannot deregister from it.
 
@@ -191,7 +183,7 @@ Deregistration Rejected
 
 ---
 
-# 9. Oban Waitlist Worker
+# Oban Waitlist Worker
 
 When an active enrollment is removed, an Oban worker processes the waitlist.
 
@@ -207,7 +199,7 @@ This allows waitlist processing to happen asynchronously.
 
 ---
 
-# 10. Mailer Background Job
+# Mailer Background Job
 
 The application supports background email processing using:
 
@@ -216,18 +208,13 @@ The application supports background email processing using:
 
 The basic flow is:
 
-```text
-Enrollment Event
-      ↓
-Create Mail Job
-      ↓
-Oban
-      ↓
-Mailer Worker
-      ↓
-Swoosh
-      ↓
-Email
+```mermaid
+flowchart TD
+    A["Enrollment Event"] --> B["Create Mail Job"]
+    B --> C["Oban"]
+    C --> D["Mailer Worker"]
+    D --> E["Swoosh"]
+    E --> F["Email"]
 ```
 
 This prevents email delivery from blocking the enrollment request.
@@ -241,7 +228,7 @@ Potential notification events include:
 
 ---
 
-# 11. Student Dashboard
+# Student Dashboard
 
 Authenticated students can access a dashboard.
 
@@ -254,7 +241,7 @@ The dashboard provides access to their academic activity, including:
 
 ---
 
-# 12. Assignment Management
+# Assignment Management
 
 Students can access assignments belonging to their courses.
 
@@ -274,7 +261,7 @@ Submission Stored
 
 ---
 
-# 13. File Uploads
+# File Uploads
 
 The project supports assignment/submission file handling.
 
@@ -282,7 +269,7 @@ Uploaded files are processed as part of the submission workflow rather than requ
 
 ---
 
-# 14. Database Relationships
+# Database Relationships
 
 The main relationships are:
 
@@ -306,7 +293,7 @@ Assignment
 
 ---
 
-# 15. Database Constraints
+# Database Constraints
 
 The database is used to enforce important data integrity rules.
 
@@ -321,31 +308,26 @@ The project uses concepts including:
 
 ---
 
-# 16. Transactional Enrollment
+# Transactional Enrollment
 
 Enrollment is performed inside a database transaction.
 
 The simplified process is:
 
-```text
-BEGIN
-  │
-  ├── Lock Course
-  │
-  ├── Check Capacity
-  │
-  ├── Determine Enrollment Status
-  │
-  └── Insert Enrollment
-  │
-COMMIT
+```mermaid
+flowchart TD
+    A["BEGIN"] --> B["Lock Course"]
+    B --> C["Check Capacity"]
+    C --> D["Determine Enrollment Status"]
+    D --> E["Insert Enrollment"]
+    E --> F["COMMIT"]
 ```
 
 If an operation fails, the transaction can roll back instead of leaving partially updated data.
 
 ---
 
-# 17. Authentication & Authorization
+# Authentication & Authorization
 
 Protected functionality requires an authenticated student.
 
@@ -361,7 +343,7 @@ This prevents unauthenticated users from accessing student-specific functionalit
 
 ---
 
-# 18. Phoenix LiveView
+# Phoenix LiveView
 
 The UI uses Phoenix LiveView for interactive functionality.
 
@@ -377,7 +359,7 @@ This allows server-side state and UI updates without requiring a traditional fro
 
 ---
 
-# 19. Error Handling
+# Error Handling
 
 The application handles errors around operations such as:
 
@@ -393,84 +375,31 @@ The system uses changesets and transactional operations to keep invalid data fro
 
 ---
 
-# 20. Overall Functional Flow
+# Overall Functional Flow
 
 The complete system can be summarized as:
 
-```text
-                    ┌─────────────┐
-                    │   Student   │
-                    └──────┬──────┘
-                           │
-                           ▼
-                    Registration
-                           │
-                           ▼
-                       Login
-                           │
-                           ▼
-                   Browse Courses
-                           │
-                           ▼
-                  Select Course
-                           │
-                           ▼
-                  Check Capacity
-                     /          \
-                    /            \
-                   ▼              ▼
-              Available          Full
-                   │              │
-                   ▼              ▼
-                ACTIVE        WAITLISTED
-                   │              │
-                   ▼              │
-              Dashboard           │
-                   │              │
-                   ▼              │
-              Assignments         │
-                   │              │
-                   ▼              │
-              Submission          │
-                                  │
-                                  ▼
-                       Active Student Leaves
-                                  │
-                                  ▼
-                           Oban Worker
-                                  │
-                                  ▼
-                       Next Student Promoted
-                                  │
-                                  ▼
-                          Mailer Job
-                                  │
-                                  ▼
-                             Swoosh
-                                  │
-                                  ▼
-                              Email
-```
+```mermaid 
+flowchart TD
+    A["Student"] --> B["Registration"]
+    B --> C["Login"]
+    C --> D["Browse Courses"]
+    D --> E["Select Course"]
+    E --> F["Check Capacity"]
+
+    F -->|Available| G["ACTIVE"]
+    F -->|Full| H["WAITLISTED"]
+
+    G --> I["Dashboard"]
+    I --> J["Assignments"]
+    J --> K["Submission"]
+
+    G --> L["Active Student Leaves"]
+    L --> M["Oban Worker"]
+    M --> N["Next Student Promoted"]
+    N --> O["Mailer Job"]
+    O --> P["Swoosh"]
+    P --> Q["Email"]```
 
 ---
 
-# Future Improvements
-
-Potential future functionality includes:
-
-* Admin dashboard
-* Instructor accounts
-* Course creation
-* Course editing
-* Role-based authorization
-* Assignment deadlines
-* Assignment grading
-* Course search
-* Pagination
-* Student profiles
-* Advanced email templates
-* Oban retry monitoring
-* Production email provider
-* More automated tests
-* Production deployment
-* Monitoring and observability

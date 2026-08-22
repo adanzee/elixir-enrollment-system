@@ -8,61 +8,40 @@ This document describes the architecture and major workflows of the Student Enro
 
 The application follows the standard Phoenix architecture:
 
-```text
-                         Browser
-                            │
-                            ▼
-                    ┌───────────────┐
-                    │ Phoenix Router│
-                    └───────┬───────┘
-                            │
-                ┌───────────┴───────────┐
-                ▼                       ▼
-           LiveViews                Controllers
-                │                       │
-                └───────────┬───────────┘
-                            ▼
-                    Business Logic
-                            │
-                            ▼
-                          Ecto
-                            │
-                            ▼
-                       PostgreSQL
+```mermaid
+flowchart TD
+    A["Browser"] --> B["Phoenix Router"]
 
-                            │
-                            ▼
-                           Oban
-                       ┌────┴────┐
-                       ▼         ▼
-                  Waitlist     Mailer
-                   Worker      Worker
-                       │         │
-                       ▼         ▼
-                  Enrollment   Swoosh
-```
+    B --> C["LiveViews"]
+    B --> D["Controllers"]
+
+    C --> E["Business Logic"]
+    D --> E
+
+    E --> F["Ecto"]
+    F --> G["PostgreSQL"]
+
+    E --> H["Oban"]
+
+    H --> I["Waitlist Worker"]
+    H --> J["Mailer Worker"]
+
+    I --> K["Enrollment"]
+    J --> L["Swoosh"]
+    ```
 
 ---
-
 ## Core Data Model
 
 The main entities are:
 
-```text
-Student
-   │
-   │ has many
-   ▼
-Enrollment
-   │
-   │ belongs to
-   ▼
-Course
-   │
-   └──────────► Assignment
-                    │
-                    ▼
-                Submission
+
+```mermaid
+flowchart TD
+    A["Student"] -->|has many| B["Enrollment"]
+    B -->|belongs to| C["Course"]
+    C -->|has many| D["Assignment"]
+    D -->|has many| E["Submission"]
 ```
 
 ### Student
@@ -75,12 +54,12 @@ A student can have multiple course enrollments.
 
 Contains:
 
-* Title
-* Description
-* Course outline
-* Start date
-* End date
-* Maximum capacity
+- Title
+- Description
+- Course outline
+- Start date
+- End date
+- Maximum capacity
 
 ### Enrollment
 
@@ -109,28 +88,17 @@ Enrollment is a concurrency-sensitive operation because several students can att
 
 The system uses database transactions and row-level locking.
 
-```text
-Begin Transaction
-       │
-       ▼
-Lock Course
-       │
-       ▼
-Count Active Enrollments
-       │
-       ▼
-Check Capacity
-       │
-   ┌───┴────┐
-   ▼        ▼
-Available  Full
-   │        │
-   ▼        ▼
-Active   Waitlisted
-   │        │
-   └───┬────┘
-       ▼
-Commit Transaction
+```mermaid
+flowchart TD
+    A["Begin Transaction"] --> B["Lock Course"]
+    B --> C["Count Active Enrollments"]
+    C --> D["Check Capacity"]
+
+    D -->|Available| E["Active"]
+    D -->|Full| F["Waitlisted"]
+
+    E --> G["Commit Transaction"]
+    F --> G
 ```
 
 This prevents multiple concurrent requests from incorrectly consuming the same seat.
@@ -149,25 +117,19 @@ Course Capacity: 2
 Student A → ACTIVE
 Student B → ACTIVE
 
-Student C → WAITLISTED #1
-Student D → WAITLISTED #2
-Student E → WAITLISTED #3
+Student C → WAITLISTED 
+Student D → WAITLISTED 
+Student E → WAITLISTED 
 ```
 
 When Student A deregisters:
 
-```text
-Student A → Removed
-     │
-     ▼
-Oban Waitlist Job
-     │
-     ▼
-Student C → ACTIVE
-     │
-     ▼
-Student D → WAITLISTED #1
-Student E → WAITLISTED #2
+```mermaid 
+flowchart TD
+    A["Student A → Removed"] --> B["Oban Waitlist Job"]
+    B --> C["Student C → ACTIVE"]
+    C --> D["Student D → WAITLISTED #1"]
+    D --> E["Student E → WAITLISTED #2"]
 ```
 
 The earliest waitlisted student is promoted first.
@@ -182,44 +144,24 @@ There are two major background-job flows.
 
 ## Waitlist Job
 
-```text
-Student Deregisters
-        │
-        ▼
-Seat Released
-        │
-        ▼
-Oban Waitlist Job
-        │
-        ▼
-Find First Waitlisted Student
-        │
-        ▼
-Promote Student
-        │
-        ▼
-Queue Notification
+```mermaid 
+flowchart TD
+    A["Student Deregisters"] --> B["Seat Released"]
+    B --> C["Oban Waitlist Job"]
+    C --> D["Find First Waitlisted Student"]
+    D --> E["Promote Student"]
+    E --> F["Queue Notification"]
 ```
 
 ## Mailer Job
 
-```text
-Application Event
-       │
-       ▼
-Create Mailer Job
-       │
-       ▼
-Oban Queue
-       │
-       ▼
-Mailer Worker
-       │
-       ▼
-Swoosh
-       │
-       ▼
-Email Delivery
+``` mermaid
+flowchart TD
+    A["Application Event"] --> B["Create Mailer Job"]
+    B --> C["Oban Queue"]
+    C --> D["Mailer Worker"]
+    D --> E["Swoosh"]
+    E --> F["Email Delivery"]
 ```
 
 Keeping email delivery in a background job prevents the user-facing operation from waiting for an email provider.
@@ -228,80 +170,41 @@ Keeping email delivery in a background job prevents the user-facing operation fr
 
 # Complete Enrollment Lifecycle
 
-```text
-                    Student
-                       │
-                       ▼
-                  Login/Register
-                       │
-                       ▼
-                  Browse Courses
-                       │
-                       ▼
-                 Select Course
-                       │
-                       ▼
-                Check Capacity
-                  /         \
-                 /           \
-          Available           Full
-              │                │
-              ▼                ▼
-           ACTIVE         WAITLISTED
-              │                │
-              ▼                │
-          Dashboard            │
-              │                │
-              ▼                │
-         Assignments           │
-              │                │
-              ▼                │
-          Submission           │
-                               │
-                               ▼
-                    Active Student Leaves
-                               │
-                               ▼
-                         Oban Worker
-                               │
-                               ▼
-                    Next Student Promoted
-                               │
-                               ▼
-                         Mailer Worker
-                               │
-                               ▼
-                            Swoosh
-                               │
-                               ▼
-                         Email Sent
-```
+``` mermaid 
+flowchart TD
+    A["Student"] --> B["Login / Register"]
+    B --> C["Browse Courses"]
+    C --> D["Select Course"]
+    D --> E["Check Capacity"]
+
+    E -->|Available| F["ACTIVE"]
+    E -->|Full| G["WAITLISTED"]
+
+    F --> H["Dashboard"]
+    H --> I["Assignments"]
+    I --> J["Submission"]
+
+    F --> K["Active Student Leaves"]
+    K --> L["Oban Worker"]
+    L --> M["Next Student Promoted"]
+    M --> N["Mailer Worker"]
+    N --> O["Swoosh"]
+    O --> P["Email Sent"]
+   
 
 ---
 
 # Authentication Architecture
 
-```text
-Browser
-   │
-   ▼
-LoginLive
-   │
-   ▼
-StudentSessionController
-   │
-   ▼
-Validate Credentials
-   │
-   ├───────────────┐
-   │               │
- Invalid          Valid
-   │               │
-   ▼               ▼
-Error          Create Session
-                   │
-                   ▼
-               Dashboard
+``` mermaid
+flowchart TD
+    A["Browser"] --> B["LoginLive"]
+    B --> C["StudentSessionController"]
+    C --> D["Validate Credentials"]
+
+    D -->|Invalid| E["Error"]
+    D -->|Valid| F["Create Session"]
+    F --> G["Dashboard"]
 ```
 
 Authentication uses sessions to identify the currently logged-in student.
@@ -310,23 +213,13 @@ Authentication uses sessions to identify the currently logged-in student.
 
 # Student Application Flow
 
-```text
-/login
-   │
-   ▼
-/dashboard
-   │
-   ▼
-/courses
-   │
-   ▼
-/courses/:id
-   │
-   ▼
-/assignments/:id
-   │
-   ▼
-Assignment Submission
+``` mermaid
+flowchart TD
+    A["/login"] --> B["/dashboard"]
+    B --> C["/courses"]
+    C --> D["/courses/:id"]
+    D --> E["/assignments/:id"]
+    E --> F["Assignment Submission"]
 ```
 
 ---
