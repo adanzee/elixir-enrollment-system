@@ -47,4 +47,38 @@ defmodule StudentLive.Emails.StudentEmail do
     |> subject("Spot Available: Enrolled in #{course.title}")
     |> text_body("Hi #{student.name},\n\nA spot opened up and your enrollment in #{course.title} is now active!")
   end
+
+  def password_reset(student, reset_url) do
+  new()
+  |> to({student.name, student.email})
+  |> from(@sender)
+  |> subject("Reset your password")
+  |> text_body("""
+  Hi #{student.name},
+
+  You requested a password reset.
+
+  Reset your password here:
+  #{reset_url}
+
+  This link expires in 1 hour.
+
+  If you didn't request this, you can ignore this email.
+  """)
+  |> html_body("""
+  <h2>Reset your password</h2>
+
+  <p>Hi #{student.name},</p>
+
+  <p>You requested a password reset.</p>
+
+  <p>
+    <a href="text-underline">Reset your password #{reset_url}</a>
+  </p>
+
+  <p>This link expires in 1 hour.</p>
+
+  <p>If you didn't request this, you can ignore this email.</p>
+  """)
+end
 end

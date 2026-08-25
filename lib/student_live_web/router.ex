@@ -67,6 +67,7 @@ defmodule StudentLiveWeb.Router do
       live "/assignments/:id", AssignmentLive.Show, :show
       live "/dashboard", DashboardLive, :index
       live "/mailbox", Mail.MailBox
+      live "/reset-password", ResetPassword
 
 
 

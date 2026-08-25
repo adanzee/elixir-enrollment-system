@@ -10,18 +10,18 @@ The system allows students to register, authenticate, browse courses, enroll in 
 
 ## Features
 
-* 🔐 Student registration and authentication
-* 📚 Course browsing and course details
-* 🎓 Course enrollment
-* ⏳ FIFO course waitlists
-* 🚪 Course deregistration
-* ⚡ Oban background job processing
-* 📧 Asynchronous email delivery with Swoosh
-* 📝 Assignment submission
-* 👨‍🎓 Student dashboard
-* 🗄️ PostgreSQL database
-* 🔒 Transactional enrollment and concurrency handling
-* 🖥️ Phoenix LiveView interface
+*  Student registration and authentication
+*  Course browsing and course details
+*  Course enrollment
+*  FIFO course waitlists
+*  Course deregistration
+*  Oban background job processing
+*  Asynchronous email delivery with Swoosh
+*  Assignment submission
+*  Student dashboard
+*  PostgreSQL database
+*  Transactional enrollment and concurrency handling
+*  Phoenix LiveView interface
 
 ---
 

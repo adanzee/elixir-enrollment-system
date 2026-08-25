@@ -12,6 +12,7 @@ defmodule StudentLive.Schemas.Student do
     has_many :enrollments, StudentLive.Schemas.Enrollment
     has_many :courses, through: [:enrollments, :course]
     has_many :submissions, StudentLive.Schemas.Submission
+    has_many :password_reset_tokens, StudentLive.Schemas.PasswordResetToken
 
     timestamps()
   end
