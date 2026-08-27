@@ -40,6 +40,15 @@ defmodule StudentLiveWeb.AuthLive.LoginLive do
               class="w-full rounded-lg border border-slate-700/80 bg-[#0d1322] px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#00a878] focus:outline-none focus:ring-1 focus:ring-[#00a878] transition-colors"/>
           </div>
 
+          <div class="flex justify-end mt-2">
+            <.link
+              navigate={~p"/forgot-password"}
+              class="text-xs font-semibold text-[#00a878] hover:underline"
+            >
+              Forgot password?
+            </.link>
+          </div>
+
           <div class="pt-2">
             <button type="submit" class="w-full rounded-lg bg-[#00a878] hover:bg-[#008f66] py-2.5 text-xs font-bold text-white shadow-md transition-all active:scale-[0.99]">
               Sign In

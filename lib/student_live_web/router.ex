@@ -51,6 +51,8 @@ defmodule StudentLiveWeb.Router do
 
     post "/login", StudentSessionController, :create
     post "/register", StudentSessionController, :register
+    live "/reset-password", ResetPassword
+    live "/forgot-password", ForgotLive
   end
 
 
@@ -67,7 +69,6 @@ defmodule StudentLiveWeb.Router do
       live "/assignments/:id", AssignmentLive.Show, :show
       live "/dashboard", DashboardLive, :index
       live "/mailbox", Mail.MailBox
-      live "/reset-password", ResetPassword
 
 
 
