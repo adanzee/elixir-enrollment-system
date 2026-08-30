@@ -67,6 +67,10 @@ config :student_live, StudentLiveWeb.Endpoint,
     ]
   ]
 
+
+# url config
+config :student_live,
+  base_url: "http://localhost:4000"
 # Enable dev routes for dashboard and mailbox
 config :student_live, dev_routes: true
 

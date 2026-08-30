@@ -17,19 +17,20 @@ defmodule StudentLiveWeb.ForgotLive do
     case Tokens.request_password_reset(email) do
       {:ok, _token} ->
         {:noreply,
-         socket
-         |> put_flash(:info, "If that email exists, reset link has been sent.")
-         |> assign(message: :sent)}
+         assign(socket,
+           message: {:success, "Password reset link has been sent to your email."}
+         )}
 
       {:error, :student_not_found} ->
         {:noreply,
-         socket
-         |> put_flash(:info, "User with this email doesn't exist.")
-         |> assign(message: :sent)}
+         assign(socket,
+           message: {:error, "No user exists with this email address."}
+         )}
 
       {:error, _reason} ->
         {:noreply,
-         put_flash(socket, :error, "Something went wrong. Please try again.")}
+         put_flash(socket, :error, "Something went wrong. Please try again.")
+         |> assign(message: nil)}
     end
   end
 
@@ -45,48 +46,56 @@ defmodule StudentLiveWeb.ForgotLive do
           </h1>
 
           <p class="text-xs text-slate-400 mt-2">
-            Enter your email and we'll send you a password reset link.
+            Enter your email to receive a password reset link.
           </p>
         </div>
 
-        <%= if @message == :sent do %>
-          <div class="rounded-lg border border-[#00a878]/30 bg-[#00a878]/10 p-4 text-center">
-            <p class="text-xs text-slate-300">
-              If an account exists with that email, a password reset link
-              has been sent.
-            </p>
-          </div>
-        <% else %>
-          <.form
-            for={%{}}
-            id="forgot-password-form"
-            phx-submit="request_reset"
-            class="space-y-4"
-          >
-
-            <div>
-              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                Email Address
-              </label>
-
-              <input
-                type="email"
-                name="email"
-                placeholder="you@example.com"
-                required
-                autocomplete="email"
-                class="w-full rounded-lg border border-slate-700/80 bg-[#0d1322] px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#00a878] focus:outline-none focus:ring-1 focus:ring-[#00a878]"
-              />
+        <%= case @message do %>
+          <% {:success, message} -> %>
+            <div class="rounded-lg border border-[#00a878]/30 bg-[#00a878]/10 p-4 text-center">
+              <p class="text-xs text-[#00a878]">
+                <%= message %>
+              </p>
             </div>
 
-            <button
-              type="submit"
-              class="w-full rounded-lg bg-[#00a878] hover:bg-[#008f66] py-2.5 text-xs font-bold text-white"
-            >
-              Send Reset Link
-            </button>
+          <% {:error, message} -> %>
+            <div class="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center">
+              <p class="text-xs text-red-400">
+                <%= message %>
+              </p>
+            </div>
 
-          </.form>
+          <% nil -> %>
+            <.form
+              for={%{}}
+              id="forgot-password-form"
+              phx-submit="request_reset"
+              class="space-y-4"
+            >
+
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Email Address
+                </label>
+
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="you@example.com"
+                  required
+                  autocomplete="email"
+                  class="w-full rounded-lg border border-slate-700/80 bg-[#0d1322] px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#00a878] focus:outline-none focus:ring-1 focus:ring-[#00a878]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                class="w-full rounded-lg bg-[#00a878] hover:bg-[#008f66] py-2.5 text-xs font-bold text-white"
+              >
+                Send Reset Link
+              </button>
+
+            </.form>
         <% end %>
 
         <div class="text-center text-xs text-slate-400">
