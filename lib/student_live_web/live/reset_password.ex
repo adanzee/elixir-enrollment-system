@@ -72,7 +72,7 @@ defmodule StudentLiveWeb.ResetPassword do
           class="space-y-4"
         >
 
-      >
+
           <div>
             <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
               New Password

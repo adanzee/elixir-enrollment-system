@@ -17,28 +17,50 @@ defmodule StudentLive.Schemas.Student do
     timestamps()
   end
 
-  def changeset(student, attrs) do
+ def changeset(student, attrs) do
     student
     |> cast(attrs, [:name, :email, :password, :confirm_password])
-    |> validate_required([:name, :email, :password])
-    |> validate_confirmation(:password)
-    |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/, message: "must have the @ sign and no spaces")
+    |> validate_required([:name, :email, :password, :confirm_password])
+    |> validate_confirm_password()
+    |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/,
+      message: "must have the @ sign and no spaces")
     |> validate_length(:password, min: 8, max: 12)
-    |> validate_format(:password, ~r/[a-zA-Z]/, message: "must contain at least one letter")
-    |> validate_format(:password, ~r/\d/, message: "must contain at least one number")
-    |> validate_format(:password, ~r/[!@#$&*]/, message: "must contain at least one special character")
+    |> validate_format(:password, ~r/[a-zA-Z]/,
+      message: "must contain at least one letter")
+    |> validate_format(:password, ~r/\d/,
+      message: "must contain at least one number")
+    |> validate_format(:password, ~r/[!@#$&*]/,
+      message: "must contain at least one special character")
     |> unique_constraint(:email, message: "has already been taken")
     |> pass_hash()
-end
+  end
 
 
   def pass_hash(changeset) do
-    case get_change(changeset, :password) do
-      password when is_binary(password) and password != "" ->
-        put_change(changeset, :hashed_password, Bcrypt.hash_pwd_salt(password))
+    if changeset.valid? do
+      case get_change(changeset, :password) do
+        password when is_binary(password) and password != "" ->
+          put_change(changeset, :hashed_password,
+            Bcrypt.hash_pwd_salt(password)
+          )
 
-      _ ->
-        changeset
+        _ ->
+          changeset
+      end
+    else
+      changeset
     end
   end
+
+  defp validate_confirm_password(changeset) do
+    password = get_field(changeset, :password)
+    confirm_password = get_field(changeset, :confirm_password)
+
+    if password == confirm_password do
+      changeset
+    else
+      add_error(changeset, :confirm_password, "does not match password")
+    end
+  end
+
 end

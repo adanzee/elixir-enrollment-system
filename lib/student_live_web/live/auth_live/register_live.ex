@@ -2,6 +2,7 @@ defmodule StudentLiveWeb.AuthLive.RegisterLive do
   use StudentLiveWeb, :live_view
 
   alias StudentLive.Schemas.Student
+  alias StudentLive.Accounts
 
   @impl true
   def mount(_params, _session, socket) do
@@ -29,6 +30,26 @@ defmodule StudentLiveWeb.AuthLive.RegisterLive do
   end
 
   @impl true
+  def handle_event("register", %{"student" => student_params}, socket) do
+    case Accounts.create_student(student_params) do
+      {:ok, _student} ->
+        {:noreply,
+        socket
+        |> put_flash(:info, "Registration successful. Please log in.")
+        |> push_navigate(to: ~p"/login")}
+
+      {:error, changeset} ->
+        {:noreply,
+        socket
+        |> put_flash(:error, "Please fix the errors below.")
+        |> assign(
+          form: to_form(changeset),
+          changeset: changeset
+        )}
+    end
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="flex min-h-screen items-center justify-center bg-[#0d1322] text-slate-100 p-4">
@@ -53,7 +74,8 @@ defmodule StudentLiveWeb.AuthLive.RegisterLive do
         <.form
           for={@form}
           id="registration-form"
-          action={~p"/register"}
+          phx-submit="register"
+          phx-change="validate"
           class="space-y-4"
         >
           <input

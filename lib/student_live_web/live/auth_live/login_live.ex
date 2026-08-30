@@ -5,15 +5,11 @@ defmodule StudentLiveWeb.AuthLive.LoginLive do
   def mount(_params, _session, socket) do
     {:ok,
      assign(socket,
-       form: to_form(%{"email" => "", "password" => ""}),
-       show_password: false
+       form: to_form(%{"email" => "", "password" => ""})
      )}
   end
 
-  @impl true
-  def handle_event("toggle_password", _params, socket) do
-    {:noreply, update(socket, :show_password, &(!&1))}
-  end
+
 
   @impl true
   def render(assigns) do
@@ -72,7 +68,8 @@ defmodule StudentLiveWeb.AuthLive.LoginLive do
             <div class="relative">
               <.input
                 field={@form[:password]}
-                type={if @show_password, do: "text", else: "password"}
+                type="password"
+                id="login-password"
                 placeholder="••••••••"
                 required
                 autocomplete="current-password"
@@ -81,10 +78,15 @@ defmodule StudentLiveWeb.AuthLive.LoginLive do
 
               <button
                 type="button"
-                phx-click="toggle_password"
+                phx-click={
+                  JS.toggle_attribute({"type", "text", "password"}, to: "#login-password")
+                  |> JS.toggle(to: "#login-password-show")
+                  |> JS.toggle(to: "#login-password-hide")
+                }
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-slate-400 hover:text-white"
               >
-                <%= if @show_password, do: "Hide", else: "Show" %>
+                <span id="login-password-show">Show</span>
+                <span id="login-password-hide" class="hidden">Hide</span>
               </button>
             </div>
           </div>
