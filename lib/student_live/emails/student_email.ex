@@ -83,7 +83,7 @@ defmodule StudentLive.Emails.StudentEmail do
         You can now access the full course dashboard or jump straight to the syllabus and assignments outline below:
       </p>
 
-      <!-- Action Buttons -->
+
       <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 32px auto 16px auto; width: 100%;">
         <tr>
           <td align="center">
@@ -393,7 +393,7 @@ defmodule StudentLive.Emails.StudentEmail do
               </div>
             </div>
 
-            <!-- Content -->
+
             <div style="
               padding: 32px 30px;
             ">
@@ -415,7 +415,6 @@ defmodule StudentLive.Emails.StudentEmail do
               </div>
             </div>
 
-            <!-- Footer -->
             <div style="
               padding: 20px 30px;
               background-color: #101726;

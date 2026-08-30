@@ -1,7 +1,6 @@
 defmodule StudentLiveWeb.AuthLive.RegisterLive do
   use StudentLiveWeb, :live_view
 
-  alias StudentLive.Accounts
   alias StudentLive.Schemas.Student
 
   @impl true
@@ -22,29 +21,15 @@ defmodule StudentLiveWeb.AuthLive.RegisterLive do
       |> Student.changeset(student_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, form: to_form(changeset), changeset: changeset)}
+    {:noreply,
+     assign(socket,
+       form: to_form(changeset),
+       changeset: changeset
+     )}
   end
 
   @impl true
-  def handle_event("register", %{"student" => student_params}, socket) do
-    case Accounts.create_student(student_params) do
-      {:ok, _student} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Registration successful. Please log in.")
-         |> push_navigate(to: ~p"/login")}
-
-      {:error, changeset} ->
-        {:noreply,
-         assign(socket,
-           form: to_form(changeset),
-           changeset: changeset
-         )}
-    end
-  end
-
-  @impl true
-def render(assigns) do
+  def render(assigns) do
     ~H"""
     <div class="flex min-h-screen items-center justify-center bg-[#0d1322] text-slate-100 p-4">
       <div class="w-full max-w-md space-y-6 rounded-xl border border-slate-800 bg-[#151c2e] p-8 shadow-2xl">
@@ -55,53 +40,135 @@ def render(assigns) do
               <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
             </svg>
           </div>
-          <h1 class="text-xl font-bold tracking-tight text-white">Create an account</h1>
-          <p class="text-xs text-slate-400">Sign up to get started with your account</p>
+
+          <h1 class="text-xl font-bold tracking-tight text-white">
+            Create an account
+          </h1>
+
+          <p class="text-xs text-slate-400">
+            Sign up to get started with your account
+          </p>
         </div>
 
-        <.form for={@form} id="registration-form" action={~p"/register"} class="space-y-4"
+        <.form
+          for={@form}
+          id="registration-form"
+          action={~p"/register"}
+          class="space-y-4"
         >
-          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+          <input
+            type="hidden"
+            name="_csrf_token"
+            value={Plug.CSRFProtection.get_csrf_token()}
+          />
 
           <div>
             <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
               Full Name
             </label>
-            <.input field={@form[:name]} type="text" placeholder="John Doe" required autocomplete="name" class="w-full rounded-lg border border-slate-700/80 bg-[#0d1322] px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#00a878] focus:outline-none focus:ring-1 focus:ring-[#00a878] transition-colors" />
+
+            <.input
+              field={@form[:name]}
+              type="text"
+              placeholder="John Doe"
+              required
+              autocomplete="name"
+              class="w-full rounded-lg border border-slate-700/80 bg-[#0d1322] px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#00a878] focus:outline-none focus:ring-1 focus:ring-[#00a878] transition-colors"
+            />
           </div>
 
           <div>
             <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
               Email Address
             </label>
-            <.input field={@form[:email]} type="email" placeholder="you@example.com" required autocomplete="email" class="w-full rounded-lg border border-slate-700/80 bg-[#0d1322] px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#00a878] focus:outline-none focus:ring-1 focus:ring-[#00a878] transition-colors"/>
+
+            <.input
+              field={@form[:email]}
+              type="email"
+              placeholder="you@example.com"
+              required
+              autocomplete="email"
+              class="w-full rounded-lg border border-slate-700/80 bg-[#0d1322] px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#00a878] focus:outline-none focus:ring-1 focus:ring-[#00a878] transition-colors"
+            />
           </div>
+
 
           <div>
             <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
               Password
             </label>
-            <.input field={@form[:password]} type="password" placeholder="••••••••" required autocomplete="new-password" class="w-full rounded-lg border border-slate-700/80 bg-[#0d1322] px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#00a878] focus:outline-none focus:ring-1 focus:ring-[#00a878] transition-colors" />
+
+            <div class="relative">
+              <.input
+                field={@form[:password]}
+                type="password"
+                id="password"
+                placeholder="••••••••"
+                required
+                autocomplete="new-password"
+                class="w-full rounded-lg border border-slate-700/80 bg-[#0d1322] px-4 py-2.5 pr-16 text-xs text-white placeholder-slate-500 focus:border-[#00a878] focus:outline-none focus:ring-1 focus:ring-[#00a878] transition-colors"
+              />
+
+              <button
+              type="button"
+              phx-click={
+                JS.toggle_attribute({"type", "text", "password"}, to: "#password")
+                |> JS.toggle(to: "#password-show")
+                |> JS.toggle(to: "#password-hide")
+              }
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-slate-400 hover:text-white"
+            >
+              <span id="password-show">Show</span>
+              <span id="password-hide" class="hidden">Hide</span>
+            </button>
+            </div>
           </div>
 
           <div>
             <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
               Confirm Password
             </label>
-            <.input field={@form[:confirm_password]} type="password" placeholder="••••••••" required autocomplete="new-password" class="w-full rounded-lg border border-slate-700/80 bg-[#0d1322] px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#00a878] focus:outline-none focus:ring-1 focus:ring-[#00a878] transition-colors"
-            />
+
+            <div class="relative">
+              <.input
+                field={@form[:confirm_password]}
+                type="password"
+                id="confirm-password"
+                placeholder="••••••••"
+                required
+                autocomplete="new-password"
+                class="w-full rounded-lg border border-slate-700/80 bg-[#0d1322] px-4 py-2.5 pr-16 text-xs text-white placeholder-slate-500 focus:border-[#00a878] focus:outline-none focus:ring-1 focus:ring-[#00a878] transition-colors"
+              />
+
+              <button
+              type="button"
+              phx-click={
+                JS.toggle_attribute({"type", "text", "password"}, to: "#confirm-password")
+                |> JS.toggle(to: "#confirm-password-show")
+                |> JS.toggle(to: "#confirm-password-hide")
+              }
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-slate-400 hover:text-white"
+            >
+              <span id="confirm-password-show">Show</span>
+              <span id="confirm-password-hide" class="hidden">Hide</span>
+            </button>
+            </div>
           </div>
 
+
           <div class="pt-2">
-            <button type="submit" class="w-full rounded-lg bg-[#00a878] hover:bg-[#008f66] py-2.5 text-xs font-bold text-white shadow-md transition-all active:scale-[0.99]">
+            <button
+              type="submit"
+              class="w-full rounded-lg bg-[#00a878] hover:bg-[#008f66] py-2.5 text-xs font-bold text-white shadow-md transition-all active:scale-[0.99]"
+            >
               Create Account
             </button>
           </div>
         </.form>
 
-
         <div class="pt-2 text-center text-xs text-slate-400">
           Already have an account?
+
           <.link
             navigate={~p"/login"}
             class="font-semibold text-[#00a878] hover:underline transition-colors ml-1"
