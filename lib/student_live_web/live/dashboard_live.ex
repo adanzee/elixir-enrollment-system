@@ -224,7 +224,7 @@ end
 
         <div class="flex justify-end pt-2">
           <.link
-            navigate={~p"/mailbox"}
+            navigate={~p"/dev/mailbox"}
             class="inline-flex items-center gap-2 bg-[#00a878] hover:bg-[#008f66] text-white text-xs font-bold px-4 py-2.5 rounded-lg shadow-md transition-all"
           >
             Check mailbox &rarr;

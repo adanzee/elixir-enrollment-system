@@ -31,6 +31,8 @@ defmodule StudentLiveWeb.Router do
     live_session :public_landing do
       live "/", Live.Main, :index
       live "/courses", CourseLive.Index, :index
+      live "/reset-password", ResetPassword
+      live "/forgot-password", ForgotLive
     end
   end
 
@@ -51,8 +53,6 @@ defmodule StudentLiveWeb.Router do
 
     post "/login", StudentSessionController, :create
     post "/register", StudentSessionController, :register
-    live "/reset-password", ResetPassword
-    live "/forgot-password", ForgotLive
   end
 
 
@@ -68,7 +68,7 @@ defmodule StudentLiveWeb.Router do
       live "/courses/:id", CourseLive.Show, :show
       live "/assignments/:id", AssignmentLive.Show, :show
       live "/dashboard", DashboardLive, :index
-      live "/mailbox", Mail.MailBox
+      #live "/mailbox", Mail.MailBox
 
 
 

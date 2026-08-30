@@ -24,7 +24,7 @@ defmodule StudentLiveWeb.ForgotLive do
       {:error, :student_not_found} ->
         {:noreply,
          socket
-         |> put_flash(:info, "If that email exists, reset link has been sent.")
+         |> put_flash(:info, "User with this email doesn't exist.")
          |> assign(message: :sent)}
 
       {:error, _reason} ->

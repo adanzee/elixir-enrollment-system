@@ -74,9 +74,9 @@ defmodule StudentLiveWeb.Mail.MailBox do
   def render(assigns) do
     ~H"""
     <div class="flex h-screen bg-[#0d1322] text-slate-100 font-sans antialiased overflow-hidden">
-      <!-- Left sidebar: Email list -->
+
       <div class="w-1/3 min-w-[320px] max-w-[420px] border-r border-slate-800 bg-[#151c2e] flex flex-col">
-        <!-- Sidebar Header -->
+
         <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-[#101726]">
           <div class="flex items-center gap-2">
             <h1 class="font-bold text-sm tracking-wide text-white">Live Mailbox</h1>
@@ -92,7 +92,7 @@ defmodule StudentLiveWeb.Mail.MailBox do
           </button>
         </div>
 
-        <!-- Email Items List -->
+
         <div class="overflow-y-auto flex-1 divide-y divide-slate-800/60">
           <%= if Enum.empty?(@emails) do %>
             <div class="p-8 text-center text-xs text-slate-500">
@@ -120,11 +120,11 @@ defmodule StudentLiveWeb.Mail.MailBox do
         </div>
       </div>
 
-      <!-- Right pane: Email view -->
+
       <div class="flex-1 p-6 sm:p-8 overflow-y-auto bg-[#0d1322]">
         <%= if @selected_email do %>
           <div class="max-w-3xl mx-auto space-y-4">
-            <!-- Email Metadata Card -->
+
             <div class="bg-[#151c2e] rounded-xl p-5 border border-slate-800 shadow-xl space-y-3">
               <div class="flex items-start justify-between gap-4">
                 <h2 class="text-lg font-bold text-white tracking-tight">
@@ -147,7 +147,7 @@ defmodule StudentLiveWeb.Mail.MailBox do
               </div>
             </div>
 
-            <!-- Email Body Content -->
+
             <div class="bg-[#151c2e] rounded-xl p-6 border border-slate-800 shadow-xl">
               <%= if @selected_email.html_body do %>
                 <div class="rounded-lg overflow-hidden">

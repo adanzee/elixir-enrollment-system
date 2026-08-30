@@ -31,6 +31,7 @@ defmodule StudentLive.Tokens do
 
 
       expires_at = DateTime.add(DateTime.utc_now(), 3600, :second)
+      #environments base url, use helper function
       reset_url = "http://localhost:4000/reset-password?token=#{raw_token}"
 
       changeset =

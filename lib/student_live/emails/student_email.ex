@@ -73,7 +73,7 @@ defmodule StudentLive.Emails.StudentEmail do
   <p>You requested a password reset.</p>
 
   <p>
-    <a href="text-underline">Reset your password #{reset_url}</a>
+    <a href="#{reset_url}">Reset your password #{reset_url}</a>
   </p>
 
   <p>This link expires in 1 hour.</p>
