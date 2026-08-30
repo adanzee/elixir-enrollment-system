@@ -253,31 +253,6 @@ end
   end
   end
 
-  defp handle_deregister(%Enrollment{status: status} = enrollment, course_id) do
-    case status do
-      status when status in [:active, "active"] ->
-      waitlisted_exists? =
-        Repo.exists?(
-          from e in Enrollment,
-            where: e.course_id == ^course_id and e.status == :waitlisted
-        )
-
-      multi =
-        Ecto.Multi.new()
-        |> Ecto.Multi.delete(:delete_enrollment, enrollment)
-
-      if waitlisted_exists? do
-        changeset =
-          StudentLive.Workers.ProcessWaitlistWorker.new(%{"course_id" => course_id})
-
-        multi
-        |> Oban.insert(:enqueue_waitlist_worker, changeset)
-        |> Repo.transaction()
-      else
-        Repo.transaction(multi)
-      end
-    end
-  end
 
   def get_enrollment_status(student_id, course_id) when is_integer(student_id) and is_integer(course_id) do
   case Repo.get_by(Enrollment, student_id: student_id, course_id: course_id) do
@@ -298,8 +273,6 @@ end
 
   def get_assignment!(id), do: Repo.get!(Assignment, id)
 
-  defp normalize_email(email) when is_binary(email), do: String.downcase(String.trim(email))
-  defp normalize_email(_), do: ""
 
   defp execute_enrollment(student_id, course_id) do
     Repo.transaction(fn ->

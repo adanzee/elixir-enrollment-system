@@ -42,9 +42,18 @@ defmodule StudentLiveWeb.ResetPassword do
              |> put_flash(:info, "Password reset successfully. Please log in.")
              |> push_navigate(to: ~p"/login")}
 
-          {:error, _reason} ->
+          {:error, :token_already_used} ->
             {:noreply,
-             put_flash(socket, :error, "Reset link is invalid or expired.")}
+             put_flash(socket, :error, "This password link has been already used.")}
+
+          {:error, :token_expired} ->
+            {:noreply, put_flash(socket, :error, "Reset link has expired")}
+
+          {:error, :token_revoked} ->
+            {:noreply, put_flash(socket, :error, "Reset link has been revoked")}
+
+          {:error, :invalid_token} ->
+            {:noreply, put_flash(socket, :error, "Link is invalid")}
         end
     end
   end
@@ -53,6 +62,8 @@ defmodule StudentLiveWeb.ResetPassword do
   def render(assigns) do
     ~H"""
     <div class="flex min-h-screen items-center justify-center bg-[#0d1322] text-slate-100 p-4">
+    <.flash kind={:error} flash={@flash} />
+    <.flash kind={:info} flash={@flash} />
       <div class="w-full max-w-md space-y-6 rounded-xl border border-slate-800 bg-[#151c2e] p-8 shadow-2xl">
 
         <div class="text-center">

@@ -71,10 +71,6 @@ defmodule StudentLiveWeb.StudentSessionController do
         |> put_flash(:error, "Invalid password. Please try again.")
         |> redirect(to: ~p"/login")
 
-      {:error, _reason} ->
-        conn
-        |> put_flash(:error, "Invalid email or password.")
-        |> redirect(to: ~p"/login")
     end
   end
 end
