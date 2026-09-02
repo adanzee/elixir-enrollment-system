@@ -69,6 +69,7 @@ config :student_live, StudentLiveWeb.Endpoint,
 
 
 # url config
+#mostly use this in runtime ,not let the recompile application again
 config :student_live,
   base_url: "http://localhost:4000"
 # Enable dev routes for dashboard and mailbox
