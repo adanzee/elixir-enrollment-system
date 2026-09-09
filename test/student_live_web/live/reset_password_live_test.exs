@@ -1,86 +1,128 @@
 defmodule StudentLiveWeb.ResetPasswordLiveTest do
   use StudentLiveWeb.ConnCase, async: true
 
-    alias StudentLive.Accounts
+  import Phoenix.LiveViewTest
 
-  defp create_student(password \\ "Password123!") do
-    attrs = %{
-      name: Faker.Person.name(),
-      email: Faker.Internet.email(),
-      password: password,
-      contact: Faker.Phone.EnUs.phone()
-    }
-
-    {:ok, student} = Accounts.create_student(attrs)
-
-    student
-  end
-
-  defp create_course() do
-     course = %Course{
-    title: Faker.Lorem.sentence(),
-    description: Faker.Lorem.paragraph(),
-    outline_pdf_path: "/uploads/#{Faker.File.file_name()}",
-    start_date: Date.add(Date.utc_today(), 3),
-    end_date: Date.add(Date.utc_today(), 33),
-    maximum_capacity: Faker.Random.random_between(1, 10)
-    }
-
-    {:ok, course} = Accounts.create_course(course)
-
-    course
-  end
+  alias StudentLive.StudentFixtures
+  alias StudentLive.PasswordResetTokenFixtures
 
   describe "Forgot Password" do
+    test "forgot password link navigates to forgot password page", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/login")
 
-  test "forgot password link navigates to forgot password page", %{conn: conn} do
-    {:ok, view, _html} = live(conn, "/login")
+      view
+      |> element(~s(a[href="/forgot-password"]))
+      |> render_click()
 
-    view
-    |> element("a", "Forgot Password?")
-    |> render_click()
+      assert_redirect(view, "/forgot-password")
+    end
 
-    assert_redirect(view, "/forgot-password")
+    test "renders forgot password page", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/forgot-password")
+
+      assert html =~ "Forgot Password"
+      assert html =~ "Email"
+    end
+
+    test "accepts reset request for an existing student email", %{conn: conn} do
+      student = StudentFixtures.student_fixture()
+
+      {:ok, view, _html} = live(conn, "/forgot-password")
+
+      html =
+        view
+        |> form("#forgot-password-form", %{
+          email: student.email
+        })
+        |> render_submit()
+
+      assert html =~ "reset"
+    end
+
+    test "shows error when student email does not exist", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/forgot-password")
+
+      html =
+        view
+        |> form("#forgot-password-form", %{
+          email: Faker.Internet.email()
+        })
+        |> render_submit()
+
+      assert html =~ "No user exists with this email address."
+    end
   end
 
-  test "renders forgot password page", %{conn: conn} do
-    {:ok, _view, html} = live(conn, "/forgot-password")
+  describe "Reset Password" do
+    test "loads reset password page with valid token and resets password", %{conn: conn} do
+      student = StudentFixtures.student_fixture()
 
-    assert html =~ "Forgot Password"
-    assert html =~ "Email"
+      %{raw_token: token} =
+        PasswordResetTokenFixtures.password_reset_token_fixture(student.id)
+
+      {:ok, view, html} =
+        live(conn, "/reset-password?token=#{token}")
+
+      assert html =~ "Reset Password"
+      assert has_element?(view, "#reset-password-form")
+      assert has_element?(view, "#reset-password")
+      assert has_element?(view, "#reset-confirm-password")
+
+      view
+      |> form("#reset-password-form", %{
+        password: "NewPassword123!",
+        confirm_password: "NewPassword123!"
+      })
+      |> render_submit()
+
+      assert_redirect(view, "/login")
+    end
+
+    test "shows error when reset token has already been used", %{conn: conn} do
+      student = StudentFixtures.student_fixture()
+
+      %{raw_token: token} =
+        PasswordResetTokenFixtures.password_reset_token_fixture(
+          student.id,
+          %{used_at: DateTime.utc_now()}
+        )
+
+      {:ok, view, _html} =
+        live(conn, "/reset-password?token=#{token}")
+
+      view
+      |> form("#reset-password-form", %{
+        password: "AnotherPassword123!",
+        confirm_password: "AnotherPassword123!"
+      })
+      |> render_submit()
+
+      assert render(view) =~ "This password link has been already used."
+    end
+
+    test "shows error when reset token has expired", %{conn: conn} do
+      student = StudentFixtures.student_fixture()
+
+      %{raw_token: token} =
+        PasswordResetTokenFixtures.password_reset_token_fixture(
+          student.id,
+          %{
+            expires_at: DateTime.add(DateTime.utc_now(), -1, :second)
+          }
+        )
+
+      {:ok, view, _html} =
+        live(conn, "/reset-password?token=#{token}")
+
+      view
+      |> form("#reset-password-form", %{
+        password: "NewPassword123!",
+        confirm_password: "NewPassword123!"
+      })
+      |> render_submit()
+
+      assert render(view) =~ "Reset link has expired"
+    end
   end
 
-  #@USER user = %{
-   # name: Faker.Person.name(),
-    #email: Faker.Internet.email(),
-    #password: "Password123!",
-  #}
-  test "accepts reset request for an existing student email", %{conn: conn} do
-  student = create_student()
-
-  {:ok, view, _html} = live(conn, "/forgot-password")
-
-  html =
-    view
-    |> form("#forgot-password-form", student: %{
-      email: student.email
-    })
-    |> render_submit()
-
-  assert html =~ "reset"
-end
-
-test "shows error when student email does not exist", %{conn: conn} do
-  {:ok, view, _html} = live(conn, "/forgot-password")
-
-  html =
-    view
-    |> form("#forgot-password-form", student: %{
-      email: Faker.Internet.email()
-    })
-    |> render_submit()
-
-  assert html =~ "User doesn't exist"
-end
-end
 end

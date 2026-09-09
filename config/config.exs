@@ -37,6 +37,9 @@ config :swoosh, :api_client, false
 
   ]
 
+config :student_live,
+  base_url: "http://localhost:4000"
+
 # Configure LiveView
 config :phoenix_live_view,
   # the attribute set on all root tags. Used for Phoenix.LiveView.ColocatedCSS.

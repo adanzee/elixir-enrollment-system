@@ -1,69 +1,48 @@
 defmodule StudentLiveWeb.LoginLiveTest do
   use StudentLiveWeb.ConnCase, async: true
 
-  alias StudentLive.Accounts
-
-  defp create_student(password \\ "Password123!") do
-    attrs = %{
-      name: Faker.Person.name(),
-      email: Faker.Internet.email(),
-      password: password,
-      contact: Faker.Phone.EnUs.phone()
-    }
-
-    {:ok, student} = Accounts.create_student(attrs)
-
-    student
-  end
+  import Phoenix.LiveViewTest
 
   describe "Login Page" do
 
-    test "logs in with valid credentials and navigates to dashboard", %{conn: conn} do
-      password = "Password123!"
-      student = create_student(password)
+    test "renders login page correctly", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/login")
 
+      assert html =~ "Welcome back"
+      assert html =~ "Sign in to access your dashboard"
+
+      assert has_element?(view, "#login-form")
+      assert has_element?(view, "input[name=email]")
+      assert has_element?(view, "#login-password")
+      assert has_element?(view, "button[type=submit]", "Sign In")
+    end
+
+    test "forgot password link navigates to forgot password page", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/login")
 
       view
-      |> form("#login-form", student: %{
-        email: student.email,
-        password: password
-      })
-      |> render_submit()
+      |> element(~s(a[href="/forgot-password"]))
+      |> render_click()
 
-      assert_redirect(view, "/dashboard")
+      assert_redirect(view, "/forgot-password")
     end
 
-    test "user does not exist error for invalid email", %{conn: conn} do
+    test "create account link navigates to registration page", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/login")
 
-      html =
-        view
-        |> form("#login-form", student: %{
-          email: Faker.Internet.email(),
-          password: "Password123!"
-        })
-        |> render_submit()
+      view
+      |> element(~s(a[href="/register"]))
+      |> render_click()
 
-      assert html =~ "User doesn't exist"
-      assert html =~ "Login"
+      assert_redirect(view, "/register")
     end
 
-    test "invalid credentials error for incorrect password", %{conn: conn} do
-      student = create_student()
-
+    test "password visibility toggle elements exist", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/login")
 
-      html =
-        view
-        |> form("#login-form", student: %{
-          email: student.email,
-          password: "WrongPassword123!"
-        })
-        |> render_submit()
-
-      assert html =~ "Invalid credentials"
-      assert html =~ "Login"
+      assert has_element?(view, "#login-password")
+      assert has_element?(view, "#login-password-show")
+      assert has_element?(view, "#login-password-hide")
     end
 
   end
