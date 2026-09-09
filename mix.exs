@@ -67,6 +67,7 @@ defmodule StudentLive.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:oban, "~> 2.17"},
       {:bcrypt_elixir, "~> 3.0"},
+      {:faker, "~> 0.19.0", only: :test},
       {:bandit, "~> 1.5"}
     ]
   end

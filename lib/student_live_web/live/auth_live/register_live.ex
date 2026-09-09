@@ -11,7 +11,8 @@ defmodule StudentLiveWeb.AuthLive.RegisterLive do
     {:ok,
      assign(socket,
        form: to_form(changeset),
-       changeset: changeset
+       changeset: changeset,
+       form_valid?: false
      )}
   end
 
@@ -25,7 +26,8 @@ defmodule StudentLiveWeb.AuthLive.RegisterLive do
     {:noreply,
      assign(socket,
        form: to_form(changeset),
-       changeset: changeset
+       changeset: changeset,
+        form_valid?: changeset.valid?
      )}
   end
 
@@ -44,7 +46,8 @@ defmodule StudentLiveWeb.AuthLive.RegisterLive do
         |> put_flash(:error, "Please fix the errors below.")
         |> assign(
           form: to_form(changeset),
-          changeset: changeset
+          changeset: changeset,
+          form_valid?: changeset.valid?
         )}
     end
   end
@@ -181,7 +184,14 @@ defmodule StudentLiveWeb.AuthLive.RegisterLive do
           <div class="pt-2">
             <button
               type="submit"
-              class="w-full rounded-lg bg-[#00a878] hover:bg-[#008f66] py-2.5 text-xs font-bold text-white shadow-md transition-all active:scale-[0.99]"
+              class={[
+                "w-full rounded-lg bg-[#00a878] hover:bg-[#008f66] py-2.5 text-xs font-bold text-white shadow-md transition-all active:scale-[0.99]",
+                if(@form_valid?) do
+                  "bg-[#00a878] hover:bg-[#008f66]"
+                else
+                  "bg-[#00a878]/50"
+                end
+              ]}
             >
               Create Account
             </button>

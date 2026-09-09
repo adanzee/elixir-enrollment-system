@@ -7,7 +7,7 @@ import Config
 # Run `mix help test` for more information.
 config :student_live, StudentLive.Repo,
   username: "postgres",
-  password: "postgres",
+  password: "123",
   hostname: "localhost",
   database: "student_live_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
@@ -39,3 +39,6 @@ config :phoenix_live_view,
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+config :student_live, Oban,
+  testing: :manual
