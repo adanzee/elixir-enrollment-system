@@ -1,4 +1,4 @@
-defmodule StudentLiveWeb.LoginPage do
+defmodule StudentLiveWeb.LoginLiveTest do
   use StudentLiveWeb.ConnCase, async: true
 
   alias StudentLive.Accounts

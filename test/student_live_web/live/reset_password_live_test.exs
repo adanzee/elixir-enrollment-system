@@ -1,4 +1,4 @@
-defmodule StudentLiveWeb.ForgetPage do
+defmodule StudentLiveWeb.ResetPasswordLiveTest do
   use StudentLiveWeb.ConnCase, async: true
 
     alias StudentLive.Accounts

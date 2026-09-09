@@ -1,4 +1,4 @@
-defmodule StudentLiveWeb.Test.SignUpPage do
+defmodule StudentLiveWeb.Test.SigninLiveTest do
   use StudentLiveWeb.ConnCase, async: true
 
   describe "registration page" do

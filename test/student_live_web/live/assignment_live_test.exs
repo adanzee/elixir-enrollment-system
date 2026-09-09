@@ -1,6 +1,7 @@
-defmodule StudentLiveWeb.AssignmentPage do
+defmodule StudentLiveWeb.AssignmentLiveTest do
   use StudentLiveWeb.ConnCase, async: true
-  decribe "assignment page" do
+
+  describe "assignment page" do
     test "submit assignment button navigates to assignment page", %{conn: conn} do
     student = create_student()
     course = create_course()

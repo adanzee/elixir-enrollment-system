@@ -1,4 +1,4 @@
-defmodule StudentLiveWeb.Test.HomePage do
+defmodule StudentLiveWeb.Test.MainLiveTest do
   use StudentLiveWeb.ConnCase, async: true
 
  describe "available course page" do
